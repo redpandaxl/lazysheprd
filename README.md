@@ -4,9 +4,137 @@ Scaffold and compose multi-agent projects that run on [Herdr](https://herdr.dev)
 
 Agent prompts here are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (`protocols/herdr-messaging.md`).
 
-Product backlog: [docs/product-stories.md](docs/product-stories.md).
+| Doc | Link |
+|-----|------|
+| Product stories | [docs/product-stories.md](docs/product-stories.md) |
+| **FAQ** | [docs/faq/](docs/faq/README.md) |
 
-## Quick start
+---
+
+## Onboarding
+
+### 1. Prerequisites
+
+- This repo checked out locally  
+- Python 3 (stdlib only for the composer)  
+- [Herdr](https://herdr.dev) installed and on `PATH` if you want layout/seed (`herdr version`)  
+- Agent CLIs you plan to seed (e.g. `grok`, `claude`) if using `--seed-panes`
+
+### 2. Where to run what
+
+| Goal | Where to run |
+|------|----------------|
+| Walk through the **TUI** | **Plain terminal** (iTerm / Terminal / WezTerm) |
+| **CLI** create / update / templates | Plain terminal |
+| **See** tabs and agents after layout/seed | **Herdr UI** (new workspace named after the project) |
+| Day-to-day multi-agent work | Herdr panes + `herdr agent prompt` |
+
+Nested TUI inside a Herdr pane can work but is harder; prefer a normal terminal for `./bin/herd-tui`.
+
+### 3. How you invoke the tools
+
+Bins live in **this repo**. They are not a global install by default. They always load packs/agents from **this checkout**, regardless of your shell cwd:
+
+```bash
+cd /path/to/herdr-agent-team
+
+./bin/herd help
+./bin/herd-tui
+./bin/herd status
+```
+
+From elsewhere:
+
+```bash
+/path/to/herdr-agent-team/bin/herd-tui
+```
+
+Optional: symlink `bin/herd` onto your `PATH` (still points at this checkout).
+
+### 4. Where the new project is created
+
+**Default is not the current directory.**
+
+```text
+$HOME/<project-name>     # e.g. ~/acme
+```
+
+Override:
+
+```bash
+./bin/herd init --name acme --dir /path/to/acme --yes
+# TUI: edit “Target directory” (default is $HOME/<name>)
+```
+
+### 5. First visual walkthrough (recommended)
+
+**Terminal A — Herdr**  
+Start Herdr as you usually do so the server is up.
+
+**Terminal B — plain shell**
+
+```bash
+cd /path/to/herdr-agent-team
+./bin/herd-tui
+```
+
+In the wizard:
+
+1. **Project name** — e.g. `visual-test`  
+2. **Target directory** — accept `~/visual-test` or set an explicit path  
+3. **Archetype** — e.g. `greenfield-web` or `blank`  
+4. **Roles / models** — defaults are fine for a first run  
+5. **Git** — optional  
+6. **Herdr layout** — yes (creates workspace + tabs)  
+7. **Seed panes** — optional; turn **off** for a faster first pass  
+8. **Create**
+
+Then in **Herdr**: open the workspace named like your project (`visual-test`), check tabs `ops` … `services`.
+
+### 6. Safer progressive tests
+
+```bash
+# A) Files only (no Herdr)
+./bin/herd init --non-interactive --name visual-files \
+  --archetype greenfield-web --no-git --no-herdr-layout --yes
+ls ~/visual-files
+
+# B) Layout only (tabs, no agent start)
+./bin/herd init --non-interactive --name visual-layout \
+  --archetype blank --no-git --herdr-layout --no-seed-panes --yes
+# → Herdr UI: workspace visual-layout
+
+# C) Full path (layout + start agents + inject prompts)
+./bin/herd init --non-interactive --name visual-full \
+  --archetype blank --no-git --herdr-layout --seed-panes --yes
+# → agents named visual-full-ops, visual-full-qa, …
+```
+
+### 7. After the project exists
+
+1. `cd` into the project (or open it from Herdr).  
+2. Agents coordinate with **`herdr agent prompt`**, not by hoping someone watches a pane — see `protocols/herdr-messaging.md`.  
+3. Ops owns `TASKS.md`; mark done only after QA (or an Ops waiver).  
+4. Update roles later without a full rescaffold:
+
+   ```bash
+   ./bin/herd update ~/visual-test --disable design --yes
+   ```
+
+### 8. Common gotchas
+
+| Gotcha | Reality |
+|--------|---------|
+| “It didn’t create files here” | Default is `$HOME/<name>`, not `$PWD` |
+| “Command not found: herd” | Use `./bin/herd` from this repo (or absolute path / symlink) |
+| “Layout failed but folder exists” | Expected — files still succeed; check `herdr` on PATH |
+| Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |
+
+More detail: **[docs/faq/](docs/faq/README.md)**.
+
+---
+
+## Quick start (command cheat sheet)
 
 ```bash
 # Unified CLI
@@ -33,6 +161,8 @@ Product backlog: [docs/product-stories.md](docs/product-stories.md).
 ```
 
 Legacy shims: `herd-init`, `herd-status`, `herd-update`, `herd-tui`.
+
+---
 
 ## Features by story
 
@@ -70,8 +200,13 @@ bin/herd-tui             # curses wizard
 bin/herd-init            # → init
 composer/                # shared engine
 archetypes/ packs/ agents/ protocols/ templates/ schemas/
+docs/faq/                # FAQ (linked from this README)
 ```
 
 ## Agent communication
 
 Mandatory Herdr messaging is baked into protocols, agent prompts, CONVENTIONS, TASKS, and boot prompts. Board updates alone are not enough — use `herdr agent prompt`.
+
+## FAQ
+
+See **[docs/faq/README.md](docs/faq/README.md)** for expanded answers (where to test, paths, bin vs repo, layout/seed, templates, update safety, etc.).
