@@ -13,58 +13,51 @@ Agent prompts here are **generic**. Project-specific facts live in each instance
 
 ## Install
 
-This repo is the **composer** (scaffold + TUI/CLI). You need:
+Install **this agent builder** (`herdr-agent-team`): the CLI/TUI that scaffolds multi-agent projects.
 
-1. **Python 3** (3.10+ recommended; stdlib only — no `pip install` for the composer)  
-2. This **git checkout** (bins load packs/agents from the repo root)  
-3. **[Herdr](https://herdr.dev)** on `PATH` for layout/seed/status (optional for files-only init)  
-4. Optional: agent CLIs you want to seed (`grok`, `claude`, `codex`, …)
+**What you get:** `herd`, `herd-tui`, packs, archetypes, and agent prompt templates from this git checkout.  
+**Not covered here:** installing [Herdr](https://herdr.dev) itself or agent CLIs (`grok`, `claude`, …) — those are separate tools you may already have. Files-only scaffolding works with just Python + this repo; layout/seed/status need Herdr on your machine later.
 
-Official Herdr install reference: [herdr.dev/docs/install](https://herdr.dev/docs/install/).
+**Requirements**
+
+- `git`  
+- **Python 3** (3.10+ recommended; **no pip packages** — stdlib only)  
+- A clone of this repository (bins resolve packs/agents from the repo root)
 
 ### Linux
 
 ```bash
-# Python
-sudo apt update && sudo apt install -y git python3   # Debian/Ubuntu
-# or: sudo dnf install git python3                   # Fedora
+# Dependencies
+sudo apt update && sudo apt install -y git python3    # Debian/Ubuntu
+# or: sudo dnf install git python3                    # Fedora
 
-# Herdr (install script) — or: brew install herdr if you use Linuxbrew
-curl -fsSL https://herdr.dev/install.sh | sh
-# ensure the install dir is on PATH (script usually prints the path)
-hash -r
-herdr --version
-
-# This repo
+# Clone the agent builder
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
 chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
 
-# Optional: put herd on PATH (still points at this checkout)
+# Optional: put commands on PATH (symlinks still point at this checkout)
 mkdir -p "$HOME/.local/bin"
 ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
 ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
-# ensure ~/.local/bin is on PATH in your shell rc
+ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
+# ensure ~/.local/bin is on PATH, e.g. in ~/.bashrc:
+# export PATH="$HOME/.local/bin:$PATH"
 
-# Verify
+# Verify the agent builder
 ./bin/herd help
 ./bin/herd-init --list-archetypes
-herdr --version
+./bin/herd-init --list-packs
 ```
 
 ### macOS
 
 ```bash
-# Python + git (Xcode CLT or Homebrew)
-xcode-select --install   # if needed
-# or: brew install python git
+# Dependencies (Xcode CLT and/or Homebrew)
+xcode-select --install    # if git/python missing
+# or: brew install git python
 
-# Herdr — Homebrew is the usual path on Mac
-brew install herdr
-# alternative: curl -fsSL https://herdr.dev/install.sh | sh
-herdr --version
-
-# This repo
+# Clone the agent builder
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
 chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
@@ -73,21 +66,22 @@ chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
 mkdir -p "$HOME/.local/bin"
 ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
 ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
+ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
 # add to ~/.zshrc if needed:
 # export PATH="$HOME/.local/bin:$PATH"
 
-# Verify
+# Verify the agent builder
 ./bin/herd help
 ./bin/herd-init --list-archetypes
-herdr --version
+./bin/herd-init --list-packs
 ```
 
 ### Windows (WSL)
 
-Native Windows Herdr is preview-only; **use WSL2** (Ubuntu recommended) for this toolchain.
+Use **WSL2** (Ubuntu recommended). Run install and the builder **inside WSL**, not from PowerShell/cmd.
 
 ```powershell
-# From Windows: install WSL if needed
+# From Windows, once:
 wsl --install
 # reboot if prompted, then open Ubuntu (or your distro)
 ```
@@ -95,15 +89,10 @@ wsl --install
 Inside **WSL**:
 
 ```bash
-# Python + git
-sudo apt update && sudo apt install -y git python3 curl ca-certificates
+# Dependencies
+sudo apt update && sudo apt install -y git python3
 
-# Herdr (Linux binary inside WSL)
-curl -fsSL https://herdr.dev/install.sh | sh
-hash -r
-herdr --version
-
-# This repo (clone into the Linux filesystem, e.g. ~/src — not under /mnt/c if you can avoid it)
+# Clone into the Linux filesystem (prefer ~/src over /mnt/c for speed)
 mkdir -p ~/src && cd ~/src
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
@@ -113,25 +102,33 @@ chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
 mkdir -p "$HOME/.local/bin"
 ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
 ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
+ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
-# Verify
+# Verify the agent builder
 ./bin/herd help
 ./bin/herd-init --list-archetypes
-herdr --version
+./bin/herd-init --list-packs
 ```
 
 **WSL tips**
 
-- Run the TUI and Herdr **inside WSL**, not from PowerShell/cmd.  
-- Prefer cloning under `~/…` in the Linux FS for performance.  
-- Agent CLIs (`grok`, `claude`, …) must also be installed **in WSL** if you use `--seed-panes`.
+- Prefer cloning under `~/…` (Linux FS), not `C:\…` via `/mnt/c`.  
+- Default new projects land under **`$PWD/<name>`** inside WSL.  
+- When you later use Herdr layout/seed, install Herdr and agent CLIs **in WSL** as well.
 
 ### After install
 
-Continue with [Onboarding](#onboarding) below (where to run, default `$PWD/<name>`, first walkthrough).  
-Troubleshooting: [docs/faq/](docs/faq/README.md).
+```bash
+cd /path/to/herdr-agent-team
+./bin/herd-tui
+# or
+./bin/herd init --non-interactive --name demo --archetype blank --yes
+# creates ./demo under the directory where you ran the command
+```
+
+Continue with [Onboarding](#onboarding). Troubleshooting: [docs/faq/](docs/faq/README.md).
 
 ---
 
@@ -139,12 +136,9 @@ Troubleshooting: [docs/faq/](docs/faq/README.md).
 
 ### 1. Prerequisites
 
-Already covered in [Install](#install). Short list:
-
-- This repo checked out locally  
-- Python 3 (stdlib only for the composer)  
-- [Herdr](https://herdr.dev) on `PATH` if you want layout/seed/status  
-- Agent CLIs you plan to seed if using `--seed-panes`
+- **This agent builder** installed ([Install](#install))  
+- Python 3 available as `python3`  
+- Optional later: [Herdr](https://herdr.dev) for layout/seed/status; agent CLIs for `--seed-panes`
 
 ### 2. Where to run what
 
