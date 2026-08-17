@@ -102,30 +102,79 @@ def interactive_plan(
     personas = apply_defaults(pack)
     apply_overrides(personas, persona_specs)
 
-    print("\nRoles (Enter=keep, kind:model:effort, n/off=disable, y/on=enable; ops always on)")
+    from .paths import DEFAULT_EFFORT, EFFORTS, KIND_HELP, KNOWN_KINDS
+
+    print("\n--- Roles & agent tools ---")
+    print("You do not need to memorize ids. Pick numbers from the lists.")
+    print(f"Effort defaults to {DEFAULT_EFFORT} if you press Enter.\n")
+
     for persona in personas:
         desc = persona.get("description") or ""
-        model_s = persona["model"] if persona["model"] is not None else "-"
-        effort_s = persona["effort"] if persona["effort"] is not None else "-"
-        print(f"  {persona['id']} — {persona['title']}")
+        print(f"{persona['title']}")
         if desc:
-            print(f"      {desc}")
-        print(f"      kind={persona['agent_kind']}  model={model_s}  effort={effort_s}")
-        reply = prompt_line("      value", "")
-        if reply == "":
-            continue
-        low = reply.lower()
-        if low in ("n", "off", "disable", "disabled"):
-            if persona["id"] == OPS_ID:
-                print("      ops cannot be disabled; keeping enabled")
-            else:
+            print(f"  {desc}")
+        if persona["id"] != OPS_ID:
+            en = prompt_line(f"  Include {persona['title']}?", "y")
+            if en.lower() in ("n", "no", "off"):
                 persona["enabled"] = False
-            continue
-        if low in ("y", "on", "enable", "enabled"):
+                print("  (skipped)")
+                continue
             persona["enabled"] = True
-            continue
-        kind, model_slot, effort_slot = parse_persona_fields(reply)
-        apply_persona_fields(persona, kind, model_slot, effort_slot)
+        else:
+            persona["enabled"] = True
+
+        # Kind pick list
+        print("  Agent tools:")
+        for i, k in enumerate(KNOWN_KINDS, 1):
+            mark = "*" if k == persona.get("agent_kind") else " "
+            help_s = KIND_HELP.get(k, "")
+            print(f"    {i:2}. [{mark}] {k:<10} {help_s}")
+        default_kind = persona.get("agent_kind") or KNOWN_KINDS[0]
+        default_idx = (
+            str(KNOWN_KINDS.index(default_kind) + 1)
+            if default_kind in KNOWN_KINDS
+            else "1"
+        )
+        kind_raw = prompt_line("  Choose agent number", default_idx)
+        if kind_raw.isdigit() and 1 <= int(kind_raw) <= len(KNOWN_KINDS):
+            persona["agent_kind"] = KNOWN_KINDS[int(kind_raw) - 1]
+        elif kind_raw in KNOWN_KINDS:
+            persona["agent_kind"] = kind_raw
+
+        # Effort pick list
+        print("  Effort:")
+        for i, e in enumerate(EFFORTS, 1):
+            mark = "*" if e == (persona.get("effort") or DEFAULT_EFFORT) else " "
+            print(f"    {i}. [{mark}] {e}")
+        default_effort = persona.get("effort") or DEFAULT_EFFORT
+        default_eidx = (
+            str(EFFORTS.index(default_effort) + 1)
+            if default_effort in EFFORTS
+            else str(EFFORTS.index(DEFAULT_EFFORT) + 1)
+        )
+        eff_raw = prompt_line("  Choose effort number", default_eidx)
+        if eff_raw.isdigit() and 1 <= int(eff_raw) <= len(EFFORTS):
+            persona["effort"] = EFFORTS[int(eff_raw) - 1]
+        elif eff_raw in EFFORTS:
+            persona["effort"] = eff_raw
+        else:
+            persona["effort"] = DEFAULT_EFFORT
+
+        # Model optional
+        model_raw = prompt_line(
+            "  Model (empty = agent default)",
+            "" if persona.get("model") is None else str(persona.get("model") or ""),
+        )
+        if model_raw == "":
+            # keep existing or null
+            if persona.get("model") is None:
+                persona["model"] = None
+        else:
+            persona["model"] = model_raw
+        print(
+            f"  → {persona['title']}: {persona['agent_kind']} / "
+            f"{persona.get('model') or 'default'} / {persona.get('effort')}\n"
+        )
 
     if git_init is None:
         git_reply = prompt_line("Initialize git repo?", "y")
