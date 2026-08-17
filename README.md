@@ -13,122 +13,93 @@ Agent prompts here are **generic**. Project-specific facts live in each instance
 
 ## Install
 
-Install **this agent builder** (`herdr-agent-team`): the CLI/TUI that scaffolds multi-agent projects.
+One-liner style: clone, run `install.sh`, use `herd` / `herd-tui` from anywhere.
 
-**What you get:** `herd`, `herd-tui`, packs, archetypes, and agent prompt templates from this git checkout.  
-**Not covered here:** installing [Herdr](https://herdr.dev) itself or agent CLIs (`grok`, `claude`, …) — those are separate tools you may already have. Files-only scaffolding works with just Python + this repo; layout/seed/status need Herdr on your machine later.
-
-**Requirements**
-
-- `git`  
-- **Python 3** (3.10+ recommended; **no pip packages** — stdlib only)  
-- A clone of this repository (bins resolve packs/agents from the repo root)
+**Needs:** `git`, `python3` (stdlib only — no pip).  
+**Does not install Herdr** — only this agent builder. Herdr is optional later for layout/seed/status.
 
 ### Linux
 
 ```bash
-# Dependencies
-sudo apt update && sudo apt install -y git python3    # Debian/Ubuntu
-# or: sudo dnf install git python3                    # Fedora
+sudo apt update && sudo apt install -y git python3   # Debian/Ubuntu
+# Fedora: sudo dnf install git python3
 
-# Clone the agent builder
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
-chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
+./install.sh
+```
 
-# Optional: put commands on PATH (symlinks still point at this checkout)
-mkdir -p "$HOME/.local/bin"
-ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
-ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
-ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
-# ensure ~/.local/bin is on PATH, e.g. in ~/.bashrc:
-# export PATH="$HOME/.local/bin:$PATH"
+If the script says `~/.local/bin` is not on `PATH`:
 
-# Verify the agent builder
-./bin/herd help
-./bin/herd-init --list-archetypes
-./bin/herd-init --list-packs
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+```bash
+herd help
+herd-tui
 ```
 
 ### macOS
 
 ```bash
-# Dependencies (Xcode CLT and/or Homebrew)
-xcode-select --install    # if git/python missing
+# git + python3 (CLT or Homebrew)
+xcode-select --install    # if needed
 # or: brew install git python
 
-# Clone the agent builder
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
-chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
+./install.sh
+```
 
-# Optional: PATH shims
-mkdir -p "$HOME/.local/bin"
-ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
-ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
-ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
-# add to ~/.zshrc if needed:
-# export PATH="$HOME/.local/bin:$PATH"
+If needed for zsh:
 
-# Verify the agent builder
-./bin/herd help
-./bin/herd-init --list-archetypes
-./bin/herd-init --list-packs
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+```bash
+herd help
+herd-tui
 ```
 
 ### Windows (WSL)
 
-Use **WSL2** (Ubuntu recommended). Run install and the builder **inside WSL**, not from PowerShell/cmd.
-
 ```powershell
-# From Windows, once:
 wsl --install
-# reboot if prompted, then open Ubuntu (or your distro)
 ```
 
-Inside **WSL**:
+Then **inside WSL** (Ubuntu, etc.):
 
 ```bash
-# Dependencies
 sudo apt update && sudo apt install -y git python3
 
-# Clone into the Linux filesystem (prefer ~/src over /mnt/c for speed)
+# Prefer Linux home, not /mnt/c
 mkdir -p ~/src && cd ~/src
 git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
 cd herdr-agent-team
-chmod +x bin/herd bin/herd-tui bin/herd-init bin/herd-status bin/herd-update
+./install.sh
 
-# Optional: PATH shims
-mkdir -p "$HOME/.local/bin"
-ln -sf "$(pwd)/bin/herd" "$HOME/.local/bin/herd"
-ln -sf "$(pwd)/bin/herd-tui" "$HOME/.local/bin/herd-tui"
-ln -sf "$(pwd)/bin/herd-init" "$HOME/.local/bin/herd-init"
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
-# Verify the agent builder
-./bin/herd help
-./bin/herd-init --list-archetypes
-./bin/herd-init --list-packs
+herd help
+herd-tui
 ```
 
-**WSL tips**
+### What `install.sh` does
 
-- Prefer cloning under `~/…` (Linux FS), not `C:\…` via `/mnt/c`.  
-- Default new projects land under **`$PWD/<name>`** inside WSL.  
-- When you later use Herdr layout/seed, install Herdr and agent CLIs **in WSL** as well.
-
-### After install
+- `chmod +x` on `bin/herd`, `herd-tui`, `herd-init`, `herd-status`, `herd-update`
+- Symlinks them into `~/.local/bin` (override with `HERD_BIN_DIR=... ./install.sh`)
+- Leaves the git checkout in place (packs/agents load from there)
 
 ```bash
-cd /path/to/herdr-agent-team
-./bin/herd-tui
-# or
-./bin/herd init --non-interactive --name demo --archetype blank --yes
-# creates ./demo under the directory where you ran the command
+./uninstall.sh    # remove the symlinks only
 ```
 
-Continue with [Onboarding](#onboarding). Troubleshooting: [docs/faq/](docs/faq/README.md).
+Then: [Onboarding](#onboarding) · [FAQ](docs/faq/README.md)
 
 ---
 
@@ -136,8 +107,7 @@ Continue with [Onboarding](#onboarding). Troubleshooting: [docs/faq/](docs/faq/R
 
 ### 1. Prerequisites
 
-- **This agent builder** installed ([Install](#install))  
-- Python 3 available as `python3`  
+- Ran [Install](#install) (`./install.sh`) so `herd` / `herd-tui` work  
 - Optional later: [Herdr](https://herdr.dev) for layout/seed/status; agent CLIs for `--seed-panes`
 
 ### 2. Where to run what
@@ -149,27 +119,19 @@ Continue with [Onboarding](#onboarding). Troubleshooting: [docs/faq/](docs/faq/R
 | **See** tabs and agents after layout/seed | **Herdr UI** (new workspace named after the project) |
 | Day-to-day multi-agent work | Herdr panes + `herdr agent prompt` |
 
-Nested TUI inside a Herdr pane can work but is harder; prefer a normal terminal for `./bin/herd-tui`.
+Nested TUI inside a Herdr pane can work but is harder; prefer a normal terminal for `herd-tui`.
 
 ### 3. How you invoke the tools
 
-Bins live in **this repo**. They are not a global install by default. They always load packs/agents from **this checkout**, regardless of your shell cwd:
+After `./install.sh`, run from **any** directory:
 
 ```bash
-cd /path/to/herdr-agent-team
-
-./bin/herd help
-./bin/herd-tui
-./bin/herd status
+herd help
+herd-tui
+herd status
 ```
 
-From elsewhere:
-
-```bash
-/path/to/herdr-agent-team/bin/herd-tui
-```
-
-Optional: symlink `bin/herd` onto your `PATH` (still points at this checkout).
+(Or still use `./bin/herd` from the repo.) Commands always load packs/agents from the git checkout `install.sh` linked.
 
 ### 4. Where the new project is created
 
@@ -195,8 +157,9 @@ Start Herdr as you usually do so the server is up.
 **Terminal B — plain shell**
 
 ```bash
-cd /path/to/herdr-agent-team
-./bin/herd-tui
+# any directory — project will be created under $PWD by default
+cd ~/projects   # or wherever you want the new folder
+herd-tui
 ```
 
 In the wizard:
@@ -216,17 +179,17 @@ Then in **Herdr**: open the workspace named like your project (`visual-test`), c
 
 ```bash
 # A) Files only (no Herdr) — creates ./visual-files under $PWD
-./bin/herd init --non-interactive --name visual-files \
+herd init --non-interactive --name visual-files \
   --archetype greenfield-web --no-git --no-herdr-layout --yes
 ls ./visual-files
 
 # B) Layout only (tabs, no agent start)
-./bin/herd init --non-interactive --name visual-layout \
+herd init --non-interactive --name visual-layout \
   --archetype blank --no-git --herdr-layout --no-seed-panes --yes
 # → Herdr UI: workspace visual-layout
 
 # C) Full path (layout + start agents + inject prompts)
-./bin/herd init --non-interactive --name visual-full \
+herd init --non-interactive --name visual-full \
   --archetype blank --no-git --herdr-layout --seed-panes --yes
 # → agents named visual-full-ops, visual-full-qa, …
 ```
@@ -248,7 +211,7 @@ ls ./visual-files
 |--------|---------|
 | “It created a folder next to me” | Default is `$PWD/<name>` — use `--dir` for elsewhere |
 | “I ran it from the herdr-agent-team repo” | That creates `./my-project` *inside this repo* unless you `--dir` elsewhere |
-| “Command not found: herd” | Use `./bin/herd` from this repo (or absolute path / symlink) |
+| “Command not found: herd” | Re-run `./install.sh` and ensure `~/.local/bin` is on `PATH` |
 | “Layout failed but folder exists” | Expected — files still succeed; check `herdr` on PATH |
 | Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |
 
@@ -258,31 +221,23 @@ More detail: **[docs/faq/](docs/faq/README.md)**.
 
 ## Quick start (command cheat sheet)
 
+After `./install.sh`:
+
 ```bash
-# Unified CLI
-./bin/herd help
+herd help
+herd-tui
 
-# TUI wizard (US-01…US-05 options)
-./bin/herd-tui
+herd init --non-interactive --name acme --archetype greenfield-web --git --yes
+herd init --non-interactive --name acme --herdr-layout --seed-panes --yes
 
-# Non-interactive create
-./bin/herd init --non-interactive --name acme --archetype greenfield-web --git --yes
-./bin/herd init --non-interactive --name acme --herdr-layout --seed-panes --yes
+herd template save my-web --archetype greenfield-web --persona qa:claude:-:high
+herd init --non-interactive --name acme --template my-web --yes
 
-# From a saved template (US-06)
-./bin/herd template save my-web --archetype greenfield-web --persona qa:claude:-:high
-./bin/herd init --non-interactive --name acme --template my-web --yes
-
-# Status (US-07)
-./bin/herd status
-./bin/herd status --focus w3
-
-# Update existing project (US-08)
-./bin/herd update ~/acme --disable design --persona developers:codex:-:high --yes
-./bin/herd update ~/acme --force-prompts --yes   # overwrite agents/*.md from pack
+herd status
+herd update ./acme --disable design --yes
 ```
 
-Legacy shims: `herd-init`, `herd-status`, `herd-update`, `herd-tui`.
+Also available: `herd-init`, `herd-status`, `herd-update`, `herd-tui` (same install).
 
 ---
 
@@ -317,12 +272,13 @@ Legacy shims: `herd-init`, `herd-status`, `herd-update`, `herd-tui`.
 ## Structure
 
 ```
+install.sh               # → symlink bins into ~/.local/bin
+uninstall.sh
 bin/herd                 # init | status | update | template
 bin/herd-tui             # curses wizard
-bin/herd-init            # → init
 composer/                # shared engine
 archetypes/ packs/ agents/ protocols/ templates/ schemas/
-docs/faq/                # FAQ (linked from this README)
+docs/faq/
 ```
 
 ## Agent communication

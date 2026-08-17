@@ -57,27 +57,18 @@ Override with `--dir` (or the TUI target step):
 
 ## Do I have to run this from the herdr-agent-team repo?
 
-**Yes for finding packs/agents — not because of your shell cwd.**
-
-- Binaries under `bin/` resolve the **repo root** (parent of `composer/`) and load packs, archetypes, and agent prompts from **this checkout**.
-- Your **current working directory** only matters if you pass a **relative** `--dir`.
-- This is **not** a global install yet. Running `./bin/herd` from another folder via absolute path still uses **this** repo’s templates.
+**No — after `./install.sh`.**
 
 ```bash
-# Typical
-cd /path/to/herdr-agent-team
-./bin/herd-tui
-
-# From anywhere (still this checkout)
-/path/to/herdr-agent-team/bin/herd status
+cd herdr-agent-team && ./install.sh
+# then from anywhere:
+herd help
+herd-tui
 ```
 
-Optional convenience (still points at this checkout):
-
-```bash
-ln -s /path/to/herdr-agent-team/bin/herd ~/bin/herd
-# if ~/bin is on PATH: herd status
-```
+- Install symlinks `herd` / `herd-tui` / … into `~/.local/bin` (pointing at this checkout).
+- Packs and agents still load from the **git checkout** the symlinks target.
+- Your **cwd** only matters for the default project path (`$PWD/<name>`).
 
 ---
 
