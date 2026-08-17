@@ -150,7 +150,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                 stdscr.getch()
                 continue
             # Always refresh default target from name when name changes
-            state.target = str(Path.home() / state.name)
+            state.target = str(Path.cwd() / state.name)
             step = 1
             continue
 

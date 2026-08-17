@@ -78,7 +78,7 @@ def interactive_plan(
         name = prompt_line("Project name")
     name = validate_project_name(name)
 
-    default_target = str(target) if target else str(Path.home() / name)
+    default_target = str(target) if target else str(Path.cwd() / name)
     target_s = prompt_line("Target directory", default_target)
     target_path = Path(target_s).expanduser().resolve()
 
@@ -200,7 +200,7 @@ def noninteractive_plan(
     pack = load_pack(pack_id)
     personas = apply_defaults(pack)
     apply_overrides(personas, persona_specs)
-    dest = (target if target else Path.home() / name).expanduser().resolve()
+    dest = (target if target else Path.cwd() / name).expanduser().resolve()
     archetype = load_archetype(archetype_id)
     if seed_panes_flag and not herdr_layout:
         raise SystemExit("--seed-panes requires --herdr-layout")
@@ -409,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
         if not name:
             name = prompt_line("Project name")
         name = validate_project_name(name)
-        dest = (target if target else Path.home() / name).expanduser().resolve()
+        dest = (target if target else Path.cwd() / name).expanduser().resolve()
         tpl = load_template(args.template)
         plan = plan_from_template(tpl, name=name, target=dest)
         # CLI flags override template defaults when explicitly set

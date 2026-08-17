@@ -32,28 +32,26 @@ You *can* run the TUI inside a Herdr pane; nested full-screen UIs are just harde
 
 ## Does it create the project in my current directory?
 
-**No, not by default.**
-
-Default target:
+**Yes, by default** — under the directory where you run the command:
 
 ```text
-$HOME/<project-name>
+$PWD/<project-name>
 ```
 
-Example: name `acme` → `/Users/you/acme`.
+Example: you `cd ~/work` and run init with name `acme` → `~/work/acme`.
 
-It does **not** scaffold into `$PWD` unless you set the path:
+Override with `--dir` (or the TUI target step):
 
 ```bash
 # CLI
 ./bin/herd init --name acme --dir /path/to/acme --yes
-./bin/herd init --non-interactive --name acme --dir "$PWD/acme" --yes
+./bin/herd init --non-interactive --name acme --dir ~/projects/acme --yes
 
 # TUI
-# On the “Target directory” step, edit the default ($HOME/<name>)
+# On the “Target directory” step, edit the default ($PWD/<name>)
 ```
 
-Interactive CLI also asks for target directory (default `$HOME/<name>`).
+**Tip:** if you run `./bin/herd-tui` from inside `herdr-agent-team`, the default project folder is created *inside that repo* unless you change the path.
 
 ---
 
@@ -88,7 +86,7 @@ ln -s /path/to/herdr-agent-team/bin/herd ~/bin/herd
 | Step | Where |
 |------|--------|
 | Run wizard / `herd init` | Plain terminal (recommended) |
-| Inspect files | Anywhere (`ls ~/my-project`) |
+| Inspect files | Anywhere (`ls ./my-project` or your `--dir`) |
 | See tabs / agents after layout+seed | **Herdr** UI → workspace = project name |
 | Day-to-day multi-agent work | Herdr panes; coordinate with `herdr agent prompt` |
 

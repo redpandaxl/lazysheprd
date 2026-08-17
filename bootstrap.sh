@@ -9,7 +9,7 @@ if [[ -z "$PROJECT_NAME" ]]; then
   exit 1
 fi
 
-TARGET="$HOME/$PROJECT_NAME"
+TARGET="${PWD}/$PROJECT_NAME"
 
 if [[ -e "$TARGET" ]] && [[ -n "$(ls -A "$TARGET" 2>/dev/null)" ]]; then
   echo "Error: $TARGET exists and is not empty" >&2

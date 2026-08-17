@@ -53,17 +53,18 @@ Optional: symlink `bin/herd` onto your `PATH` (still points at this checkout).
 
 ### 4. Where the new project is created
 
-**Default is not the current directory.**
+**Default is under the directory where you run the command:**
 
 ```text
-$HOME/<project-name>     # e.g. ~/acme
+$PWD/<project-name>     # e.g. ./acme if you ran the command in that folder
 ```
 
-Override:
+Override with an absolute or other path:
 
 ```bash
 ./bin/herd init --name acme --dir /path/to/acme --yes
-# TUI: edit “Target directory” (default is $HOME/<name>)
+./bin/herd init --name acme --dir ~/projects/acme --yes
+# TUI: edit “Target directory” (default is $PWD/<name>)
 ```
 
 ### 5. First visual walkthrough (recommended)
@@ -81,7 +82,7 @@ cd /path/to/herdr-agent-team
 In the wizard:
 
 1. **Project name** — e.g. `visual-test`  
-2. **Target directory** — accept `~/visual-test` or set an explicit path  
+2. **Target directory** — accept `$PWD/visual-test` or set an explicit path  
 3. **Archetype** — e.g. `greenfield-web` or `blank`  
 4. **Roles / models** — defaults are fine for a first run  
 5. **Git** — optional  
@@ -94,10 +95,10 @@ Then in **Herdr**: open the workspace named like your project (`visual-test`), c
 ### 6. Safer progressive tests
 
 ```bash
-# A) Files only (no Herdr)
+# A) Files only (no Herdr) — creates ./visual-files under $PWD
 ./bin/herd init --non-interactive --name visual-files \
   --archetype greenfield-web --no-git --no-herdr-layout --yes
-ls ~/visual-files
+ls ./visual-files
 
 # B) Layout only (tabs, no agent start)
 ./bin/herd init --non-interactive --name visual-layout \
@@ -118,14 +119,15 @@ ls ~/visual-files
 4. Update roles later without a full rescaffold:
 
    ```bash
-   ./bin/herd update ~/visual-test --disable design --yes
+   ./bin/herd update ./visual-test --disable design --yes
    ```
 
 ### 8. Common gotchas
 
 | Gotcha | Reality |
 |--------|---------|
-| “It didn’t create files here” | Default is `$HOME/<name>`, not `$PWD` |
+| “It created a folder next to me” | Default is `$PWD/<name>` — use `--dir` for elsewhere |
+| “I ran it from the herdr-agent-team repo” | That creates `./my-project` *inside this repo* unless you `--dir` elsewhere |
 | “Command not found: herd” | Use `./bin/herd` from this repo (or absolute path / symlink) |
 | “Layout failed but folder exists” | Expected — files still succeed; check `herdr` on PATH |
 | Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |

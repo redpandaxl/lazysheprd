@@ -9,7 +9,7 @@ CLI-only team composer: pick a pack, tune personas (kind/model/effort), write pr
 1. `schemas/team.v1.schema.json` — JSON Schema for `team.yaml`
 2. `packs/software-delivery/pack.yaml` — default personas pointing at repo `agents/*.md`
 3. `bin/herd-init` — interactive rail (Python 3 stdlib only)
-4. Materialize into `$HOME/<project>` (or `--dir`):
+4. Materialize into `$PWD/<project>` (or `--dir`):
    - `CONVENTIONS.md`, `TASKS.md` from `templates/`
    - `protocols/`
    - `agents/*.md` for enabled personas
