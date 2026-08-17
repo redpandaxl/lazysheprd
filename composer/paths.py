@@ -9,6 +9,20 @@ ARCHETYPES_DIR = TEMPLATE_ROOT / "archetypes"
 DEFAULT_PACK = "software-delivery"
 OPS_ID = "ops"
 
+
+def default_project_dir(name: str, *, explicit: Path | None = None) -> Path:
+    """Default scaffold path: $PWD/<name>, unless cwd is already <name>.
+
+    Avoids nested team_test/team_test when the user is already in a folder
+    named like the project.
+    """
+    if explicit is not None:
+        return explicit.expanduser().resolve()
+    cwd = Path.cwd().resolve()
+    if cwd.name == name:
+        return cwd
+    return (cwd / name).resolve()
+
 # Herdr-supported kinds (from `herdr agent start --kind`) plus explicit aliases.
 # Order = pick-list order; first entries are the common defaults users should see.
 KNOWN_KINDS = [

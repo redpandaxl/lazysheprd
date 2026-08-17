@@ -23,6 +23,7 @@ from .paths import (
     KIND_HELP,
     KNOWN_KINDS,
     OPS_ID,
+    default_project_dir,
 )
 from .packs import validate_project_name
 
@@ -198,8 +199,8 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                 _menu(stdscr, "Invalid name", str(exc), ["OK"], 0, "Enter to retry")
                 stdscr.getch()
                 continue
-            # Always refresh default target from name when name changes
-            state.target = str(Path.cwd() / state.name)
+            # Default under $PWD/<name>, or $PWD if already in a folder of that name
+            state.target = str(default_project_dir(state.name))
             step = 1
             continue
 

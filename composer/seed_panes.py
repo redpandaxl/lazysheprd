@@ -91,30 +91,57 @@ def build_seed_prompt(
     *,
     project_cwd: Path,
     persona: dict[str, Any],
+    agent_name: str | None = None,
 ) -> str:
-    """Combine role prompt file + boot_prompt into one first message."""
-    parts: list[str] = []
+    """Combine role identity + prompt file + boot into one first message.
+
+    Leads with an unmistakable role block so coding agents (Claude/Grok/etc.)
+    lock identity immediately — a bare paste of agents/*.md is easy to miss
+    as a normal chat turn after CLI startup.
+    """
+    title = str(persona.get("title") or persona.get("id") or "Agent")
+    role = str(persona.get("role") or persona.get("id") or title)
+    tab = str(persona.get("tab") or role)
+    aname = agent_name or str(persona.get("id") or "agent")
+
+    # Explicit identity first (most important for models that treat this as a user turn)
+    identity = (
+        f"# ROLE ASSIGNMENT — READ FIRST\n\n"
+        f"**You are: {title}** (role id: `{role}`)\n"
+        f"**Herdr agent name:** `{aname}` (use this when others message you)\n"
+        f"**Your tab:** `{tab}`\n"
+        f"**Project directory:** `{project_cwd}`\n\n"
+        f"You are **only** {title}. You are **not** Ops, Developers, Design, or QA "
+        f"unless that is your title above.\n"
+        f"Do not take on another role's duties.\n"
+    )
+
+    parts: list[str] = [identity]
+
     prompt_file = persona.get("prompt_file") or ""
     if prompt_file:
         path = project_cwd / prompt_file
         if path.is_file():
             body = path.read_text(encoding="utf-8").strip()
             if body:
-                parts.append(body)
+                parts.append("# Role playbook\n\n" + body)
         else:
             parts.append(
                 f"(Role prompt file missing at {prompt_file}; use boot instructions only.)"
             )
+
     boot = (persona.get("boot_prompt") or "").strip()
     if boot:
-        parts.append("## Boot\n" + boot)
+        parts.append("# Boot instructions\n\n" + boot)
+
     parts.append(
-        "## Session\n"
-        f"Working directory: {project_cwd}\n"
-        "You are in a Herdr multi-agent workspace. Coordinate via "
-        "`herdr agent prompt` — never assume pane watching. "
-        "Read protocols/herdr-messaging.md if you have not already.\n"
-        "Reply with a one-line READY when you have absorbed this role, then wait for Ops."
+        "# Session rules\n\n"
+        f"- Working directory: `{project_cwd}`\n"
+        "- Multi-agent workspace on Herdr: coordinate with "
+        "`herdr agent prompt <name> \"...\"` — never assume pane watching.\n"
+        "- Read `protocols/herdr-messaging.md` and `protocols/coordination.md`.\n"
+        f"- Confirm identity: reply with exactly "
+        f"`READY: {title} ({aname})` then wait for Ops."
     )
     return "\n\n".join(parts)
 
@@ -216,19 +243,58 @@ def seed_panes(
             time.sleep(0.5)
             continue
 
-        seed_text = build_seed_prompt(project_cwd=project_cwd, persona=persona)
+        # Let CLI finish splash/UI before identity prompt (esp. Claude Code).
+        time.sleep(1.5)
         try:
-            prompt_args = ["agent", "prompt", agent_name, seed_text]
-            if wait_ready:
-                prompt_args.extend(
-                    ["--wait", "--timeout", str(prompt_timeout_ms)]
-                )
-            _run(prompt_args, timeout=(prompt_timeout_ms / 1000) + 30, check=True)
+            _run(
+                ["agent", "wait", agent_name, "--until", "idle", "--timeout", "45000"],
+                timeout=50,
+                check=False,
+            )
+        except Exception:
+            pass
+
+        seed_text = build_seed_prompt(
+            project_cwd=project_cwd,
+            persona=persona,
+            agent_name=agent_name,
+        )
+        try:
+            # Always wait a bit so the model starts consuming the role block.
+            wait_ms = max(prompt_timeout_ms, 45000) if wait_ready else 45000
+            prompt_args = [
+                "agent",
+                "prompt",
+                agent_name,
+                seed_text,
+                "--wait",
+                "--timeout",
+                str(wait_ms),
+            ]
+            _run(prompt_args, timeout=(wait_ms / 1000) + 30, check=True)
             entry["status"] = "seeded"
-            entry["detail"] = f"role prompt injected as agent {agent_name!r}"
+            entry["detail"] = (
+                f"role prompt injected as {agent_name!r} "
+                f"(identity: {title})"
+            )
         except (HerdrLayoutError, Exception) as exc:
-            entry["status"] = "started_not_seeded"
-            entry["detail"] = f"agent {agent_name!r} running but prompt failed: {exc}"
+            try:
+                _run(
+                    ["agent", "prompt", agent_name, seed_text],
+                    timeout=30,
+                    check=True,
+                )
+                entry["status"] = "seeded"
+                entry["detail"] = (
+                    f"role prompt injected as {agent_name!r} (no wait); "
+                    f"identity: {title}"
+                )
+            except (HerdrLayoutError, Exception) as exc2:
+                entry["status"] = "started_not_seeded"
+                entry["detail"] = (
+                    f"agent {agent_name!r} running but prompt failed: {exc2} "
+                    f"(first error: {exc})"
+                )
 
         results.append(entry)
         time.sleep(0.4)
