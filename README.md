@@ -13,6 +13,30 @@ Agent prompts in this repo are **generic**. Project-specific facts live in each 
 
 ---
 
+## Quick start
+
+After [install](#install) (`./install.sh`):
+
+```bash
+lazysheprd help
+lazysheprd-tui
+
+lazysheprd init --non-interactive --name acme --archetype greenfield-web --git --yes
+lazysheprd init --non-interactive --name acme --herdr-layout --seed-panes --yes
+
+lazysheprd template save my-web --archetype greenfield-web --persona qa:claude:-:high
+lazysheprd init --non-interactive --name acme --template my-web --yes
+
+lazysheprd status
+lazysheprd update ./acme --disable design --yes
+```
+
+Also available: `lazysheprd-init`, `lazysheprd-status`, `lazysheprd-update`, `lazysheprd-tui` (same install).
+
+Default project path is `$PWD/<name>`. See [Install](#install) and [Onboarding](#onboarding) below.
+
+---
+
 ## Install
 
 One-liner style: clone, run `install.sh`, use `lazysheprd` / `lazysheprd-tui` from anywhere.
@@ -218,28 +242,6 @@ lazysheprd init --non-interactive --name visual-full \
 | Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |
 
 More detail: **[docs/faq/](docs/faq/README.md)**.
-
----
-
-## Quick start (command cheat sheet)
-
-After `./install.sh`:
-
-```bash
-lazysheprd help
-lazysheprd-tui
-
-lazysheprd init --non-interactive --name acme --archetype greenfield-web --git --yes
-lazysheprd init --non-interactive --name acme --herdr-layout --seed-panes --yes
-
-lazysheprd template save my-web --archetype greenfield-web --persona qa:claude:-:high
-lazysheprd init --non-interactive --name acme --template my-web --yes
-
-lazysheprd status
-lazysheprd update ./acme --disable design --yes
-```
-
-Also available: `lazysheprd-init`, `lazysheprd-status`, `lazysheprd-update`, `lazysheprd-tui` (same install).
 
 ---
 
