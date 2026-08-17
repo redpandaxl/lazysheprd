@@ -1,8 +1,10 @@
-# herdr-agent-team
+# LazySheprd (`lazysheprd`)
 
-Scaffold and compose multi-agent projects that run on [Herdr](https://herdr.dev).
+Team-building CLI/TUI for [Herdr](https://herdr.dev) multi-agent projects — scaffold roles, archetypes, layout, and seed panes without the ceremony.
 
-Agent prompts here are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (`protocols/herdr-messaging.md`).
+*(Lazy + shepherd. Yes, the spelling is intentional.)*
+
+Agent prompts in this repo are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (`protocols/herdr-messaging.md`).
 
 | Doc | Link |
 |-----|------|
