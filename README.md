@@ -1,6 +1,6 @@
 # LazySheprd (`lazysheprd`)
 
-Team-building CLI/TUI for [Herdr](https://herdr.dev) multi-agent projects — scaffold roles, archetypes, layout, and seed panes without the ceremony.
+**LazySheprd is the `create-next-app` / Yeoman-style wizard for [Herdr](https://herdr.dev) teams** — answer a few questions, get a multi-agent project (roles, tasks, layout, optional seeded panes) instead of a web app.
 
 *(Lazy + shepherd. Yes, the spelling is intentional.)*
 
