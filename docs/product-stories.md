@@ -11,9 +11,9 @@ Source backlog: US-01 … US-08 (TUI composer).
 | **US-03** Archetype / phase | **Missing** | Blank `templates/TASKS.md` only | Archetype catalog + seeded TASKS |
 | **US-04** Herdr layout | **Done** | `--herdr-layout` / TUI option → workspace + tabs + focus; ids in `team.yaml` | Server auto-start if needed |
 | **US-05** Seed panes | **Done** | `--seed-panes` / TUI: start agents + inject role+boot; report + team.yaml seed | Project-scoped agent names |
-| **US-06** Saved templates | **Missing** | Packs only | Local JSON/TOML user templates |
-| **US-07** Status overview | **Missing** | Use `herdr agent list` raw | Companion view |
-| **US-08** Update existing | **Missing** | Refuse non-empty target | Merge mode + confirm overwrites |
+| **US-06** Saved templates | **Done** | `herd template` + `--template` / `--save-template` | `~/.config/herd-compose/templates/*.json` |
+| **US-07** Status overview | **Done** | `herd status` / `herd-status` | Focus helper; not a Herdr replacement |
+| **US-08** Update existing | **Done** | `herd update PATH` | Force flags for prompts/protocols; CONVENTIONS preserved |
 
 ## Build order (locked)
 
@@ -21,8 +21,8 @@ Source backlog: US-01 … US-08 (TUI composer).
 2. **P1 — Interactive surface** — TUI wizard for US-01+02+03 over the engine; CLI remains thin wrapper
 3. **P2 — US-04** Herdr layout auto ✅
 4. **P3 — US-05** Seed panes ✅
-5. **P4 — US-06** User templates
-6. Later: US-07, US-08
+5. **P4 — US-06** User templates ✅
+6. **P5 — US-07 / US-08** status + update ✅
 
 ## Architecture
 

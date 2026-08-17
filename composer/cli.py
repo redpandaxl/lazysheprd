@@ -280,12 +280,41 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_false",
         help="Skip seeding panes",
     )
+    p.add_argument(
+        "--template",
+        help="US-06: start from a saved user template id",
+    )
+    p.add_argument(
+        "--save-template",
+        metavar="NAME",
+        help="US-06: after plan is built, save it as a named template",
+    )
+    p.add_argument(
+        "--force-template",
+        action="store_true",
+        help="Overwrite template when using --save-template",
+    )
     p.add_argument("--list-packs", action="store_true")
     p.add_argument("--list-archetypes", action="store_true")
+    p.add_argument("--list-templates", action="store_true", help="US-06 list user templates")
     return p.parse_args(argv)
 
 
 def run_plan(plan: dict[str, Any]) -> int:
+    if plan.get("save_template"):
+        from .user_templates import save_template_from_plan
+
+        path = save_template_from_plan(
+            plan,
+            template_id=str(plan["save_template"]),
+            overwrite=bool(plan.get("force_template")),
+        )
+        print(f"✅ Saved template {plan['save_template']} → {path}")
+
+    # Allow --save-template-only workflows (no project name materialize)
+    if plan.get("save_template_only"):
+        return 0
+
     materialize(
         name=plan["name"],
         target=plan["target"],
@@ -358,11 +387,52 @@ def main(argv: list[str] | None = None) -> int:
         return list_packs()
     if args.list_archetypes:
         return list_archetypes()
+    if args.list_templates:
+        from .user_templates import print_templates
+
+        return print_templates()
 
     target = Path(args.dir).expanduser() if args.dir else None
     git_flag = args.git  # None / True / False
     herdr_flag = args.herdr_layout  # None / True / False
     seed_flag = args.seed_panes  # None / True / False
+
+    if args.template:
+        from .user_templates import load_template, plan_from_template
+
+        if not args.name and not args.non_interactive:
+            # interactive can still ask name
+            pass
+        if args.non_interactive and not args.name:
+            raise SystemExit("--template with --non-interactive requires --name")
+        name = args.name
+        if not name:
+            name = prompt_line("Project name")
+        name = validate_project_name(name)
+        dest = (target if target else Path.home() / name).expanduser().resolve()
+        tpl = load_template(args.template)
+        plan = plan_from_template(tpl, name=name, target=dest)
+        # CLI flags override template defaults when explicitly set
+        if git_flag is not None:
+            plan["git_init"] = bool(git_flag)
+        if herdr_flag is not None:
+            plan["herdr_layout"] = bool(herdr_flag)
+        if seed_flag is not None:
+            plan["seed_panes"] = bool(seed_flag)
+        if args.persona:
+            apply_overrides(plan["personas"], args.persona)
+        if args.save_template:
+            plan["save_template"] = args.save_template
+            plan["force_template"] = args.force_template
+        if not args.yes and not args.non_interactive:
+            print("\nPlan from template", args.template)
+            print(f"  name: {plan['name']}")
+            print(f"  dir:  {plan['target']}")
+            print(f"  archetype: {plan['archetype_id']}")
+            confirm = prompt_line("Create project?", "y")
+            if confirm.lower() not in ("y", "yes"):
+                raise SystemExit("aborted")
+        return run_plan(plan)
 
     if args.non_interactive:
         git_init = True if git_flag is True else False if git_flag is False else False
@@ -398,4 +468,8 @@ def main(argv: list[str] | None = None) -> int:
             plan["seed_panes"] = seed_flag
         if plan.get("seed_panes") and not plan.get("herdr_layout"):
             plan["seed_panes"] = False
+
+    if args.save_template:
+        plan["save_template"] = args.save_template
+        plan["force_template"] = args.force_template
     return run_plan(plan)

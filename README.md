@@ -2,122 +2,76 @@
 
 Scaffold and compose multi-agent projects that run on [Herdr](https://herdr.dev).
 
-Agent prompts here are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (see `protocols/herdr-messaging.md`).
+Agent prompts here are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (`protocols/herdr-messaging.md`).
 
 Product backlog: [docs/product-stories.md](docs/product-stories.md).
 
 ## Quick start
 
 ```bash
-# TUI wizard (US-01 + US-02 + US-03) — recommended
+# Unified CLI
+./bin/herd help
+
+# TUI wizard (US-01…US-05 options)
 ./bin/herd-tui
 
-# CLI rail
-./bin/herd-init
-./bin/herd-init --non-interactive --name acme --archetype greenfield-web --git --yes
-./bin/herd-init --non-interactive --name acme --herdr-layout --yes   # US-04: workspace + tabs
-./bin/herd-init --non-interactive --name acme --herdr-layout --seed-panes --yes  # + US-05
-./bin/herd-init --list-archetypes
-./bin/herd-init --list-packs
+# Non-interactive create
+./bin/herd init --non-interactive --name acme --archetype greenfield-web --git --yes
+./bin/herd init --non-interactive --name acme --herdr-layout --seed-panes --yes
+
+# From a saved template (US-06)
+./bin/herd template save my-web --archetype greenfield-web --persona qa:claude:-:high
+./bin/herd init --non-interactive --name acme --template my-web --yes
+
+# Status (US-07)
+./bin/herd status
+./bin/herd status --focus w3
+
+# Update existing project (US-08)
+./bin/herd update ~/acme --disable design --persona developers:codex:-:high --yes
+./bin/herd update ~/acme --force-prompts --yes   # overwrite agents/*.md from pack
 ```
+
+Legacy shims: `herd-init`, `herd-status`, `herd-update`, `herd-tui`.
+
+## Features by story
+
+| Story | Capability |
+|-------|------------|
+| US-01 | Project name/dir, roles, models, files, optional git |
+| US-02 | Role catalog + enable/disable + kind/model/effort |
+| US-03 | Archetypes seed `TASKS.md` |
+| US-04 | Optional Herdr workspace + tabs (`--herdr-layout`) |
+| US-05 | Optional start agents + inject prompts (`--seed-panes`) |
+| US-06 | Save/load user templates (`~/.config/herd-compose/templates/`) |
+| US-07 | `herd status` companion overview |
+| US-08 | `herd update` merge config; no silent overwrite of customs |
 
 ## What gets generated
 
 | Artifact | Purpose |
 |----------|---------|
-| `CONVENTIONS.md` | Project facts + mandatory Herdr messaging callout |
-| `TASKS.md` | Seeded from **archetype** (or blank) |
-| `protocols/coordination.md` | Team rules |
-| `protocols/herdr-messaging.md` | How agents must `herdr agent prompt` each other |
-| `agents/*.md` | Role prompts for enabled personas |
-| `team.yaml` | Roles, kinds, models, effort, boot prompts, layout tabs |
-| `.git/` | Optional (`--git` / TUI toggle) |
+| `CONVENTIONS.md` | Project facts + messaging callout |
+| `TASKS.md` | Archetype-seeded board |
+| `protocols/*` | coordination + herdr-messaging |
+| `agents/*.md` | Role prompts |
+| `team.yaml` | Plan + optional `herdr` layout/seed metadata |
+| `.git/` | Optional |
 
-## Archetypes (US-03)
+## Archetypes
 
-| Id | Use when |
-|----|----------|
-| `blank` | Full manual TASKS control |
-| `greenfield-web` | New web product |
-| `revive-existing` | Existing codebase under ops |
-| `infra-heavy` | Platform / CI / envs first |
-| `bot-api` | Bot + API service |
-
-You can edit `TASKS.md` after generation.
-
-## Roles & models (US-02)
-
-Default pack `software-delivery`: **Ops**, **Infrastructure**, **Developers**, **Design**, **QA** (each with a short description).
-
-- Toggle roles on/off (Ops always on)
-- Assign kind/tool: `grok`, `claude`, `codex`, `cursor`, `gemini`, …, `other`
-- Optional model string + effort (`low`/`medium`/`high`/`max`)
-- Stored as **intent** in `team.yaml` (CLI flags differ by agent)
+`blank` · `greenfield-web` · `revive-existing` · `infra-heavy` · `bot-api`
 
 ## Structure
 
 ```
-herdr-agent-team/
-├── bin/herd-tui              # curses TUI wizard
-├── bin/herd-init             # CLI (interactive + --non-interactive)
-├── composer/                 # shared plan + materialize engine
-├── archetypes/               # TASKS seeds
-├── agents/                   # generic role prompts
-├── packs/software-delivery/  # default role pack
-├── protocols/                # coordination + herdr-messaging
-├── templates/                # CONVENTIONS + blank TASKS fallback
-├── schemas/team.v1.schema.json
-└── bootstrap.sh              # dumb full copy (no team.yaml / archetypes)
+bin/herd                 # init | status | update | template
+bin/herd-tui             # curses wizard
+bin/herd-init            # → init
+composer/                # shared engine
+archetypes/ packs/ agents/ protocols/ templates/ schemas/
 ```
 
-## Herdr layout (US-04)
+## Agent communication
 
-Optional **Also set up Herdr layout** (TUI toggle / CLI `--herdr-layout`):
-
-- Ensures Herdr server is running (starts headless `herdr server` if needed)
-- Creates a **workspace** labeled with the project name, cwd = project dir
-- Creates tabs: enabled persona tabs from the pack **+ `services`**
-- Focuses that workspace (and the first/ops tab)
-- Writes `herdr.workspace_id` + tab/pane ids into `team.yaml` for later seeding
-
-```bash
-./bin/herd-init --non-interactive --name acme --herdr-layout --yes
-# skip:
-./bin/herd-init --non-interactive --name acme --no-herdr-layout --yes
-```
-
-### Seed panes (US-05)
-
-With layout enabled, optionally **start agents and inject** `agents/*.md` + `boot_prompt`:
-
-```bash
-./bin/herd-init --non-interactive --name acme --herdr-layout --seed-panes --yes
-```
-
-- Agents are named `{project}-{role}` (e.g. `acme-ops`) to avoid global name clashes  
-- Per-pane status is printed and stored under `team.yaml` → `herdr.seed`  
-- Model/effort stay intent in `team.yaml` (not always passed as CLI flags)  
-- `services` tab has no agent  
-
-TUI: same screen as layout — toggle “Seed agent panes”.
-
-## After scaffold
-
-1. `cd` into the project  
-2. If layout+seed: open Herdr, use sidebar, Ops is ready from `TASKS.md`  
-3. If layout only: `herdr agent start … --pane <id from team.yaml>` then paste prompts  
-4. If neither: create tabs manually as before  
-
-## Agent communication (built in)
-
-Every project includes mandatory Herdr-first protocols and agent prompt sections. Board updates alone are **not** coordination — use `herdr agent prompt`.
-
-## Roadmap (stories)
-
-| Priority | Stories | Status |
-|----------|---------|--------|
-| P0 | US-01, US-02, US-03 (scaffold + TUI) | Done |
-| P1 | US-04 Herdr layout auto | **Done** (Python) |
-| P2 | US-05 Seed panes | **Done** (Python) |
-| P3 | US-06 Templates | Planned |
-| Later | US-07 status, US-08 update existing | Planned |
+Mandatory Herdr messaging is baked into protocols, agent prompts, CONVENTIONS, TASKS, and boot prompts. Board updates alone are not enough — use `herdr agent prompt`.
