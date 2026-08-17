@@ -26,8 +26,8 @@ One-liner style: clone, run `install.sh`, use `herd` / `herd-tui` from anywhere.
 sudo apt update && sudo apt install -y git python3   # Debian/Ubuntu
 # Fedora: sudo dnf install git python3
 
-git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
-cd herdr-agent-team
+git clone https://github.com/redpandaxl/lazysheprd.git
+cd lazysheprd
 ./install.sh
 ```
 
@@ -50,8 +50,8 @@ herd-tui
 xcode-select --install    # if needed
 # or: brew install git python
 
-git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
-cd herdr-agent-team
+git clone https://github.com/redpandaxl/lazysheprd.git
+cd lazysheprd
 ./install.sh
 ```
 
@@ -80,8 +80,8 @@ sudo apt update && sudo apt install -y git python3
 
 # Prefer Linux home, not /mnt/c
 mkdir -p ~/src && cd ~/src
-git clone <YOUR_FORK_OR_REMOTE_URL> herdr-agent-team
-cd herdr-agent-team
+git clone https://github.com/redpandaxl/lazysheprd.git
+cd lazysheprd
 ./install.sh
 
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
@@ -212,7 +212,7 @@ herd init --non-interactive --name visual-full \
 | Gotcha | Reality |
 |--------|---------|
 | “It created a folder next to me” | Default is `$PWD/<name>` — use `--dir` for elsewhere |
-| “I ran it from the herdr-agent-team repo” | That creates `./my-project` *inside this repo* unless you `--dir` elsewhere |
+| “I ran it from the lazysheprd repo” | That creates `./my-project` *inside this repo* unless you `--dir` elsewhere |
 | “Command not found: herd” | Re-run `./install.sh` and ensure `~/.local/bin` is on `PATH` |
 | “Layout failed but folder exists” | Expected — files still succeed; check `herdr` on PATH |
 | Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |
