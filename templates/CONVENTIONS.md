@@ -2,6 +2,15 @@
 
 Fill this file in the **project instance**. Agent prompts stay generic; project-specific facts live here.
 
+## Agent communication (mandatory — do not skip)
+
+This project runs as a **Herdr multi-agent team**.
+
+- All assignments, status updates, unblocks, and review handoffs go through **Herdr agent messaging** (`herdr agent prompt`).
+- Updating `TASKS.md` alone is **not** enough — always notify the relevant agents (and Ops) via Herdr.
+- Never assume another agent is watching your pane.
+- Full rules: `protocols/coordination.md` and `protocols/herdr-messaging.md`.
+
 ## Project goal
 
 <!-- TODO: one paragraph — what this project is for and who it is for -->

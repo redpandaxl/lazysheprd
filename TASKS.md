@@ -31,3 +31,9 @@ See `docs/lightweight-composer.md`.
 - Extra packs (gtm, analytics, …)
 - Herdr tab/agent auto-spawn from team.yaml
 - TUI / right-rail co-pilot
+
+## Phase 2.1 — Herdr messaging in scaffold
+
+| ID | Task | Owner | Status | Notes |
+|----|------|-------|--------|-------|
+| T18 | Bake mandatory Herdr messaging into protocols, agents, templates, boot prompts, next steps | ops | done | protocols/herdr-messaging.md; all agent prompts; CONVENTIONS/TASKS; pack boot prompts; bootstrap + herd-init next steps |

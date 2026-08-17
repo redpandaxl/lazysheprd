@@ -30,7 +30,7 @@ personas:
     model: null
     effort: low
     prompt_file: agents/ops.md
-    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+    boot_prompt: "You are Ops in a Herdr multi-agent workspace. Read CONVENTIONS.md, TASKS.md, protocols/coordination.md, and protocols/herdr-messaging.md. All assignments and handoffs MUST use herdr agent prompt — never assume pane watching. Enforce that for the whole team. Then begin from TASKS.md."
   - id: infrastructure
     role: infrastructure
     title: Infrastructure
@@ -40,7 +40,7 @@ personas:
     model: null
     effort: medium
     prompt_file: agents/infrastructure.md
-    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+    boot_prompt: "You are Infrastructure in a Herdr multi-agent workspace. Read CONVENTIONS.md, protocols/coordination.md, and protocols/herdr-messaging.md. Coordinate only via herdr agent prompt (Ops + affected agents). Do not assume pane watching. Await Ops assignment or report ready via Herdr."
   - id: developers
     role: developers
     title: Developers
@@ -50,7 +50,7 @@ personas:
     model: null
     effort: medium
     prompt_file: agents/developers.md
-    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+    boot_prompt: "You are Developers in a Herdr multi-agent workspace. Read CONVENTIONS.md, protocols/coordination.md, and protocols/herdr-messaging.md. Status, blocks, and review requests MUST go through herdr agent prompt to Ops (and QA when review is due). Do not assume pane watching. Await Ops assignment."
   - id: design
     role: design
     title: Design
@@ -60,7 +60,7 @@ personas:
     model: null
     effort: medium
     prompt_file: agents/design.md
-    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+    boot_prompt: "You are Design in a Herdr multi-agent workspace. Read CONVENTIONS.md, protocols/coordination.md, and protocols/herdr-messaging.md. Deliver specs and status only via herdr agent prompt to Ops. Do not assume pane watching. Await Ops assignment."
   - id: qa
     role: qa
     title: QA
@@ -70,4 +70,4 @@ personas:
     model: null
     effort: medium
     prompt_file: agents/qa.md
-    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+    boot_prompt: "You are QA in a Herdr multi-agent workspace. Read CONVENTIONS.md, protocols/coordination.md, and protocols/herdr-messaging.md. Review requests and findings MUST use herdr agent prompt to Ops and the implementer. Do not assume pane watching. Await review assignment."

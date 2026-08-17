@@ -50,7 +50,19 @@ Creates `$HOME/<name>` (or `--dir`) with `CONVENTIONS.md`, `TASKS.md`, `protocol
 2. `herdr`
 3. Create tabs from `team.yaml` `layout.tabs`
 4. Start each agent manually, e.g. `herdr agent start <id> --kind <kind> --pane ...`
-5. Use `agents/*.md`; boot ops with that persona's `boot_prompt`
+5. Use `agents/*.md`; boot each agent with its `boot_prompt` from `team.yaml`
+
+### Agent communication (built into the scaffold)
+
+Every new project includes:
+
+- `protocols/coordination.md` — non-negotiable Herdr-first rules
+- `protocols/herdr-messaging.md` — exact `herdr agent prompt` patterns
+- Agent prompts with a **Herdr communication (mandatory)** section
+- `CONVENTIONS.md` + `TASKS.md` reminders that board updates alone are not enough
+- Boot prompts that force reading the messaging protocol before work
+
+Agents must coordinate with `herdr agent prompt` — not by hoping someone watches a pane. You should not need to re-explain this each time if agents follow the scaffold files.
 
 ### bootstrap.sh (dumb copy)
 

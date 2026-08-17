@@ -607,7 +607,12 @@ def print_next_steps(target: Path, team: dict[str, Any]) -> None:
             f"--pane <tab:{p['tab']}>{extra}"
         )
         print("   (model/effort are stored intent; flags vary by agent kind)")
-    print("5. Paste/use agents/*.md; boot ops with:")
+    print("5. Paste/use agents/*.md for each persona.")
+    print("6. Communication is MANDATORY via Herdr (not pane-watching):")
+    print("   - Read protocols/herdr-messaging.md + protocols/coordination.md")
+    print("   - Assign/unblock/review with: herdr agent prompt <name> \"...\"")
+    print("   - TASKS.md updates alone are not enough — always message agents")
+    print("7. Boot each agent with its team.yaml boot_prompt; boot ops with:")
     ops = next(p for p in team["personas"] if p["id"] == OPS_ID)
     print(f"   {ops['boot_prompt']}")
 
