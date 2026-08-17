@@ -1,4 +1,4 @@
-# LazySheprd (`lazysheprd`)
+# LazySheprd
 
 **LazySheprd is the `create-next-app` / Yeoman-style wizard for [Herdr](https://herdr.dev) teams** — answer a few questions, get a multi-agent project (roles, tasks, layout, optional seeded panes) instead of a web app.
 
