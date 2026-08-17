@@ -15,7 +15,7 @@ Agent prompts in this repo are **generic**. Project-specific facts live in each 
 
 ## Install
 
-One-liner style: clone, run `install.sh`, use `herd` / `herd-tui` from anywhere.
+One-liner style: clone, run `install.sh`, use `lazysheprd` / `lazysheprd-tui` from anywhere.
 
 **Needs:** `git`, `python3` (stdlib only — no pip).  
 **Does not install Herdr** — only this agent builder. Herdr is optional later for layout/seed/status.
@@ -39,8 +39,8 @@ source ~/.bashrc
 ```
 
 ```bash
-herd help
-herd-tui
+lazysheprd help
+lazysheprd-tui
 ```
 
 ### macOS
@@ -63,8 +63,8 @@ source ~/.zshrc
 ```
 
 ```bash
-herd help
-herd-tui
+lazysheprd help
+lazysheprd-tui
 ```
 
 ### Windows (WSL)
@@ -87,14 +87,14 @@ cd lazysheprd
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 
-herd help
-herd-tui
+lazysheprd help
+lazysheprd-tui
 ```
 
 ### What `install.sh` does
 
-- `chmod +x` on `bin/herd`, `herd-tui`, `herd-init`, `herd-status`, `herd-update`
-- Symlinks them into `~/.local/bin` (override with `HERD_BIN_DIR=... ./install.sh`)
+- `chmod +x` on `bin/lazysheprd`, `lazysheprd-tui`, `lazysheprd-init`, `lazysheprd-status`, `lazysheprd-update`
+- Symlinks them into `~/.local/bin` (override with `LAZYSHEPRD_BIN_DIR=... ./install.sh`)
 - Leaves the git checkout in place (packs/agents load from there)
 
 ```bash
@@ -109,7 +109,7 @@ Then: [Onboarding](#onboarding) · [FAQ](docs/faq/README.md)
 
 ### 1. Prerequisites
 
-- Ran [Install](#install) (`./install.sh`) so `herd` / `herd-tui` work  
+- Ran [Install](#install) (`./install.sh`) so `lazysheprd` / `lazysheprd-tui` work  
 - Optional later: [Herdr](https://herdr.dev) for layout/seed/status; agent CLIs for `--seed-panes`
 
 ### 2. Where to run what
@@ -121,19 +121,19 @@ Then: [Onboarding](#onboarding) · [FAQ](docs/faq/README.md)
 | **See** tabs and agents after layout/seed | **Herdr UI** (new workspace named after the project) |
 | Day-to-day multi-agent work | Herdr panes + `herdr agent prompt` |
 
-Nested TUI inside a Herdr pane can work but is harder; prefer a normal terminal for `herd-tui`.
+Nested TUI inside a Herdr pane can work but is harder; prefer a normal terminal for `lazysheprd-tui`.
 
 ### 3. How you invoke the tools
 
 After `./install.sh`, run from **any** directory:
 
 ```bash
-herd help
-herd-tui
-herd status
+lazysheprd help
+lazysheprd-tui
+lazysheprd status
 ```
 
-(Or still use `./bin/herd` from the repo.) Commands always load packs/agents from the git checkout `install.sh` linked.
+(Or still use `./bin/lazysheprd` from the repo.) Commands always load packs/agents from the git checkout `install.sh` linked.
 
 ### 4. Where the new project is created
 
@@ -146,8 +146,8 @@ $PWD/<project-name>     # e.g. ./acme if you ran the command in that folder
 Override with an absolute or other path:
 
 ```bash
-./bin/herd init --name acme --dir /path/to/acme --yes
-./bin/herd init --name acme --dir ~/projects/acme --yes
+./bin/lazysheprd init --name acme --dir /path/to/acme --yes
+./bin/lazysheprd init --name acme --dir ~/projects/acme --yes
 # TUI: edit “Target directory” (default is $PWD/<name>)
 ```
 
@@ -161,7 +161,7 @@ Start Herdr as you usually do so the server is up.
 ```bash
 # any directory — project will be created under $PWD by default
 cd ~/projects   # or wherever you want the new folder
-herd-tui
+lazysheprd-tui
 ```
 
 In the wizard:
@@ -181,17 +181,17 @@ Then in **Herdr**: open the workspace named like your project (`visual-test`), c
 
 ```bash
 # A) Files only (no Herdr) — creates ./visual-files under $PWD
-herd init --non-interactive --name visual-files \
+lazysheprd init --non-interactive --name visual-files \
   --archetype greenfield-web --no-git --no-herdr-layout --yes
 ls ./visual-files
 
 # B) Layout only (tabs, no agent start)
-herd init --non-interactive --name visual-layout \
+lazysheprd init --non-interactive --name visual-layout \
   --archetype blank --no-git --herdr-layout --no-seed-panes --yes
 # → Herdr UI: workspace visual-layout
 
 # C) Full path (layout + start agents + inject prompts)
-herd init --non-interactive --name visual-full \
+lazysheprd init --non-interactive --name visual-full \
   --archetype blank --no-git --herdr-layout --seed-panes --yes
 # → agents named visual-full-ops, visual-full-qa, …
 ```
@@ -204,7 +204,7 @@ herd init --non-interactive --name visual-full \
 4. Update roles later without a full rescaffold:
 
    ```bash
-   ./bin/herd update ./visual-test --disable design --yes
+   ./bin/lazysheprd update ./visual-test --disable design --yes
    ```
 
 ### 8. Common gotchas
@@ -213,7 +213,7 @@ herd init --non-interactive --name visual-full \
 |--------|---------|
 | “It created a folder next to me” | Default is `$PWD/<name>` — use `--dir` for elsewhere |
 | “I ran it from the lazysheprd repo” | That creates `./my-project` *inside this repo* unless you `--dir` elsewhere |
-| “Command not found: herd” | Re-run `./install.sh` and ensure `~/.local/bin` is on `PATH` |
+| “Command not found: lazysheprd” | Re-run `./install.sh` and ensure `~/.local/bin` is on `PATH` |
 | “Layout failed but folder exists” | Expected — files still succeed; check `herdr` on PATH |
 | Agents don’t talk | Must use Herdr messaging; board-only updates are not enough |
 
@@ -226,20 +226,20 @@ More detail: **[docs/faq/](docs/faq/README.md)**.
 After `./install.sh`:
 
 ```bash
-herd help
-herd-tui
+lazysheprd help
+lazysheprd-tui
 
-herd init --non-interactive --name acme --archetype greenfield-web --git --yes
-herd init --non-interactive --name acme --herdr-layout --seed-panes --yes
+lazysheprd init --non-interactive --name acme --archetype greenfield-web --git --yes
+lazysheprd init --non-interactive --name acme --herdr-layout --seed-panes --yes
 
-herd template save my-web --archetype greenfield-web --persona qa:claude:-:high
-herd init --non-interactive --name acme --template my-web --yes
+lazysheprd template save my-web --archetype greenfield-web --persona qa:claude:-:high
+lazysheprd init --non-interactive --name acme --template my-web --yes
 
-herd status
-herd update ./acme --disable design --yes
+lazysheprd status
+lazysheprd update ./acme --disable design --yes
 ```
 
-Also available: `herd-init`, `herd-status`, `herd-update`, `herd-tui` (same install).
+Also available: `lazysheprd-init`, `lazysheprd-status`, `lazysheprd-update`, `lazysheprd-tui` (same install).
 
 ---
 
@@ -252,9 +252,9 @@ Also available: `herd-init`, `herd-status`, `herd-update`, `herd-tui` (same inst
 | US-03 | Archetypes seed `TASKS.md` |
 | US-04 | Optional Herdr workspace + tabs (`--herdr-layout`) |
 | US-05 | Optional start agents + inject prompts (`--seed-panes`) |
-| US-06 | Save/load user templates (`~/.config/herd-compose/templates/`) |
-| US-07 | `herd status` companion overview |
-| US-08 | `herd update` merge config; no silent overwrite of customs |
+| US-06 | Save/load user templates (`~/.config/lazysheprd/templates/`) |
+| US-07 | `lazysheprd status` companion overview |
+| US-08 | `lazysheprd update` merge config; no silent overwrite of customs |
 
 ## What gets generated
 
@@ -276,9 +276,9 @@ Also available: `herd-init`, `herd-status`, `herd-update`, `herd-tui` (same inst
 ```
 install.sh               # → symlink bins into ~/.local/bin
 uninstall.sh
-bin/herd                 # init | status | update | template
-bin/herd-tui             # curses wizard
-composer/                # shared engine
+bin/lazysheprd                 # init | status | update | template
+bin/lazysheprd-tui             # curses wizard
+lazysheprd/              # shared engine package
 archetypes/ packs/ agents/ protocols/ templates/ schemas/
 docs/faq/
 ```

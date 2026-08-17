@@ -1,4 +1,4 @@
-"""CLI rail for herd-init (US-01/02/03 without full TUI chrome)."""
+"""CLI rail for lazysheprd init."""
 
 from __future__ import annotations
 

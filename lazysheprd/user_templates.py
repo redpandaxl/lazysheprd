@@ -12,9 +12,17 @@ from .paths import DEFAULT_PACK
 
 
 def templates_dir() -> Path:
-    base = Path.home() / ".config" / "herd-compose" / "templates"
+    """User templates live under ~/.config/lazysheprd/templates.
+
+    Also reads legacy ~/.config/herd-compose/templates if present.
+    """
+    base = Path.home() / ".config" / "lazysheprd" / "templates"
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+
+def _legacy_templates_dir() -> Path:
+    return Path.home() / ".config" / "herd-compose" / "templates"
 
 
 def _safe_id(name: str) -> str:
@@ -31,24 +39,38 @@ def template_path(template_id: str) -> Path:
 
 def list_templates() -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    for path in sorted(templates_dir().glob("*.json")):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        if not isinstance(data, dict):
-            continue
-        data.setdefault("id", path.stem)
-        data["_path"] = str(path)
-        items.append(data)
+    seen: set[str] = set()
+    dirs = [templates_dir()]
+    legacy = _legacy_templates_dir()
+    if legacy.is_dir():
+        dirs.append(legacy)
+    for directory in dirs:
+        for path in sorted(directory.glob("*.json")):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(data, dict):
+                continue
+            tid = str(data.get("id") or path.stem)
+            if tid in seen:
+                continue
+            seen.add(tid)
+            data.setdefault("id", tid)
+            data["_path"] = str(path)
+            items.append(data)
     return items
 
 
 def load_template(template_id: str) -> dict[str, Any]:
     path = template_path(template_id)
     if not path.is_file():
-        known = ", ".join(t.get("id", "?") for t in list_templates()) or "(none)"
-        raise SystemExit(f"unknown template {template_id!r}; available: {known}")
+        legacy = _legacy_templates_dir() / f"{_safe_id(template_id)}.json"
+        if legacy.is_file():
+            path = legacy
+        else:
+            known = ", ".join(t.get("id", "?") for t in list_templates()) or "(none)"
+            raise SystemExit(f"unknown template {template_id!r}; available: {known}")
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise SystemExit(f"invalid template file: {path}")

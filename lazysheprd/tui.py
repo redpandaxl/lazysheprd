@@ -61,7 +61,7 @@ def _menu(
 ) -> None:
     stdscr.erase()
     h, w = stdscr.getmaxyx()
-    stdscr.addnstr(0, 0, " herd-tui  ·  multi-agent project composer ", w - 1, curses.A_REVERSE)
+    stdscr.addnstr(0, 0, " lazysheprd  ·  shepherd a Herdr team ", w - 1, curses.A_REVERSE)
     stdscr.addnstr(2, 2, title[: w - 4], w - 4, curses.A_BOLD)
     if subtitle:
         for i, line in enumerate(subtitle.split("\n")):
@@ -132,7 +132,7 @@ def _input_line(
     curses.curs_set(1)
     h, w = stdscr.getmaxyx()
     stdscr.erase()
-    stdscr.addnstr(0, 0, " herd-tui  ·  multi-agent project composer ", w - 1, curses.A_REVERSE)
+    stdscr.addnstr(0, 0, " lazysheprd  ·  shepherd a Herdr team ", w - 1, curses.A_REVERSE)
     stdscr.addnstr(2, 2, prompt[: w - 4], w - 4, curses.A_BOLD)
     if initial:
         stdscr.addnstr(3, 2, f"default: {initial}"[: w - 4], w - 4)
@@ -580,7 +580,7 @@ def main(argv: list[str] | None = None) -> int:
         plan = curses.wrapper(_run)
     except curses.error as exc:
         raise SystemExit(
-            f"TUI failed ({exc}). Use ./bin/herd-init for the CLI rail instead."
+            f"TUI failed ({exc}). Use lazysheprd init for the CLI rail instead."
         ) from exc
     if plan is None:
         print("aborted")

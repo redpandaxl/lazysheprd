@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
-# Install herdr-agent-team (agent builder) onto your PATH via ~/.local/bin
+# Install LazySheprd (lazysheprd) onto your PATH via ~/.local/bin
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="${HERD_BIN_DIR:-$HOME/.local/bin}"
+BIN_DIR="${LAZYSHEPRD_BIN_DIR:-$HOME/.local/bin}"
 
-need_python() {
-  if ! command -v python3 >/dev/null 2>&1; then
-    echo "error: python3 not found. Install Python 3 and re-run." >&2
-    exit 1
-  fi
-}
-
-need_python
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 not found. Install Python 3 and re-run." >&2
+  exit 1
+fi
 
 mkdir -p "$BIN_DIR"
 
-TOOLS=(herd herd-tui herd-init herd-status herd-update)
+TOOLS=(lazysheprd lazysheprd-tui lazysheprd-init lazysheprd-status lazysheprd-update)
 for name in "${TOOLS[@]}"; do
   src="$ROOT/bin/$name"
   if [[ ! -f "$src" ]]; then
@@ -28,9 +24,23 @@ for name in "${TOOLS[@]}"; do
   echo "linked  $BIN_DIR/$name  →  $src"
 done
 
-# Ensure wrappers still resolve the repo (they already use path relative to bin/)
+# Remove legacy herd* shims from pre-rebrand installs of this project
+LEGACY=(herd herd-tui herd-init herd-status herd-update)
+for old in "${LEGACY[@]}"; do
+  target="$BIN_DIR/$old"
+  if [[ -L "$target" ]]; then
+    link="$(readlink "$target" || true)"
+    case "$link" in
+      "$ROOT/bin/"*|*/herdr-agent-team/bin/*|*/lazysheprd/bin/*)
+        rm -f "$target"
+        echo "removed old shim  $target"
+        ;;
+    esac
+  fi
+done
+
 echo
-echo "✅ herdr-agent-team installed"
+echo "✅ LazySheprd installed"
 echo "   repo: $ROOT"
 echo "   bins: $BIN_DIR"
 echo
@@ -43,10 +53,10 @@ if ! echo ":$PATH:" | grep -q ":$BIN_DIR:"; then
 else
   echo "PATH already includes $BIN_DIR — try:"
   echo
-  echo "  herd help"
-  echo "  herd-tui"
+  echo "  lazysheprd help"
+  echo "  lazysheprd-tui"
   echo
 fi
 
 echo "Uninstall:  ./uninstall.sh"
-echo "Projects default to \$PWD/<name> when you run herd init / herd-tui."
+echo "Projects default to \$PWD/<name> when you run lazysheprd init / lazysheprd-tui."

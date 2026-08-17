@@ -28,7 +28,7 @@ def _cmd_init(argv: list[str]) -> int:
 
 
 def _cmd_status(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="herd status", description="US-07 agent status overview")
+    p = argparse.ArgumentParser(prog="lazysheprd status", description="US-07 agent status overview")
     p.add_argument("--workspace", "-w", help="Filter by workspace id or label substring")
     p.add_argument("--json", action="store_true", help="Machine-readable output")
     p.add_argument("--focus", metavar="TARGET", help="Focus workspace id or agent name/pane")
@@ -40,7 +40,7 @@ def _cmd_status(argv: list[str]) -> int:
 
 def _cmd_update(argv: list[str]) -> int:
     p = argparse.ArgumentParser(
-        prog="herd update",
+        prog="lazysheprd update",
         description="US-08 update existing project agent config without clobbering customs",
     )
     p.add_argument("project", type=Path, help="Path to existing project")
@@ -96,7 +96,7 @@ def _cmd_update(argv: list[str]) -> int:
 
 
 def _cmd_template(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="herd template", description="US-06 user templates")
+    p = argparse.ArgumentParser(prog="lazysheprd template", description="US-06 user templates")
     sub = p.add_subparsers(dest="action", required=True)
 
     sub.add_parser("list", help="List saved templates")
@@ -168,7 +168,7 @@ def _cmd_template(argv: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
-    # Backward compatible: no subcommand → treat as init (old herd-init flags)
+    # No subcommand → treat as init
     if not argv or argv[0].startswith("-"):
         return _cmd_init(argv)
 
@@ -184,22 +184,25 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_template(rest)
     if cmd in ("-h", "--help", "help"):
         print(
-            """herd — Herdr multi-agent project composer
+            """lazysheprd — LazySheprd, team builder for Herdr
+
+Shepherd a multi-agent team: scaffold, layout, seed, status, update.
 
 Commands:
-  herd init [flags]          Create a new project (default if no command)
-  herd status [--workspace]  US-07 agent overview
-  herd status --focus TARGET Jump to workspace or agent
-  herd update PATH           US-08 update existing project
-  herd template list|save|show|delete
+  lazysheprd init [flags]          Create a new project (default if no command)
+  lazysheprd status [--workspace]  Agent overview across workspaces
+  lazysheprd status --focus TARGET Jump to workspace or agent
+  lazysheprd update PATH           Update existing project agent config
+  lazysheprd template list|save|show|delete
 
-Legacy:
-  herd-init …   same as herd init
-  herd-tui      interactive curses wizard
-  herd-status   same as herd status
+Also:
+  lazysheprd-tui     interactive curses wizard
+  lazysheprd-init    same as lazysheprd init
+  lazysheprd-status  same as lazysheprd status
+  lazysheprd-update  same as lazysheprd update
 """
         )
         return 0
 
-    print(f"unknown command {cmd!r}; try: herd help", file=sys.stderr)
+    print(f"unknown command {cmd!r}; try: lazysheprd help", file=sys.stderr)
     return 2

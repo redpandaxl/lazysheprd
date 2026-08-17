@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Herdr team.yaml v1",
-  "description": "Instance team plan written by herd-init. model and effort are stored intent; CLI flags vary by agent kind.",
+  "description": "Instance team plan written by lazysheprd init. model and effort are stored intent; CLI flags vary by agent kind.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "project", "defaults", "layout", "personas"],

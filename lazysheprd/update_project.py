@@ -104,7 +104,7 @@ def apply_update(
 
     if not is_project_dir(project_dir):
         raise SystemExit(
-            f"{project_dir} does not look like a herd project "
+            f"{project_dir} does not look like a LazySheprd project "
             "(need CONVENTIONS.md, agents/, or team.yaml)"
         )
 

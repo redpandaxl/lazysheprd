@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TUI entry — US-01 + US-02 + US-03 wizard (curses)."""
+"""LazySheprd update (alias for lazysheprd update)."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from composer.tui import main
+from lazysheprd.main import main
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        raise SystemExit(main(["update", *sys.argv[1:]]))
     except KeyboardInterrupt:
         raise SystemExit("interrupted")
