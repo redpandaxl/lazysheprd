@@ -1,0 +1,4 @@
+id: greenfield-web
+title: Greenfield web app
+description: New web product from zero — stack, skeleton, first vertical slice
+tasks_file: tasks/greenfield-web.md

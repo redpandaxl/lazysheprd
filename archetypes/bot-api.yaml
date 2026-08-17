@@ -1,0 +1,4 @@
+id: bot-api
+title: Bot + API
+description: Chat/bot surface with backend API and ops guardrails
+tasks_file: tasks/bot-api.md

@@ -1,0 +1,4 @@
+id: revive-existing
+title: Revive existing project
+description: Bring an existing codebase under multi-agent ops with inventory and health
+tasks_file: tasks/revive-existing.md

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI entry — thin wrapper around composer.cli."""
+"""TUI entry — US-01 + US-02 + US-03 wizard (curses)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from composer.cli import main
+from composer.tui import main
 
 if __name__ == "__main__":
     try:

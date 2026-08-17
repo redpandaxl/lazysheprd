@@ -1,83 +1,93 @@
 # herdr-agent-team
 
-Boilerplate for spinning up a new Herdr multi-agent project.
+Scaffold and compose multi-agent projects that run on [Herdr](https://herdr.dev).
 
-Agent prompts in this repo are **generic**. Project-specific facts belong in the instance's `CONVENTIONS.md` and `TASKS.md` (copied from `templates/` at init). Improving this template later does not change projects already scaffolded.
+Agent prompts here are **generic**. Project-specific facts live in each instance’s `CONVENTIONS.md` and `TASKS.md`. Coordination always goes through **Herdr messaging** (see `protocols/herdr-messaging.md`).
 
-See [docs/lightweight-composer.md](docs/lightweight-composer.md) for the Phase 2 composer design.
+Product backlog: [docs/product-stories.md](docs/product-stories.md).
+
+## Quick start
+
+```bash
+# TUI wizard (US-01 + US-02 + US-03) — recommended
+./bin/herd-tui
+
+# CLI rail
+./bin/herd-init
+./bin/herd-init --non-interactive --name acme --archetype greenfield-web --git --yes
+./bin/herd-init --list-archetypes
+./bin/herd-init --list-packs
+```
+
+## What gets generated
+
+| Artifact | Purpose |
+|----------|---------|
+| `CONVENTIONS.md` | Project facts + mandatory Herdr messaging callout |
+| `TASKS.md` | Seeded from **archetype** (or blank) |
+| `protocols/coordination.md` | Team rules |
+| `protocols/herdr-messaging.md` | How agents must `herdr agent prompt` each other |
+| `agents/*.md` | Role prompts for enabled personas |
+| `team.yaml` | Roles, kinds, models, effort, boot prompts, layout tabs |
+| `.git/` | Optional (`--git` / TUI toggle) |
+
+## Archetypes (US-03)
+
+| Id | Use when |
+|----|----------|
+| `blank` | Full manual TASKS control |
+| `greenfield-web` | New web product |
+| `revive-existing` | Existing codebase under ops |
+| `infra-heavy` | Platform / CI / envs first |
+| `bot-api` | Bot + API service |
+
+You can edit `TASKS.md` after generation.
+
+## Roles & models (US-02)
+
+Default pack `software-delivery`: **Ops**, **Infrastructure**, **Developers**, **Design**, **QA** (each with a short description).
+
+- Toggle roles on/off (Ops always on)
+- Assign kind/tool: `grok`, `claude`, `codex`, `cursor`, `gemini`, …, `other`
+- Optional model string + effort (`low`/`medium`/`high`/`max`)
+- Stored as **intent** in `team.yaml` (CLI flags differ by agent)
 
 ## Structure
 
 ```
 herdr-agent-team/
-├── bin/herd-init             # pack + persona rail; writes team.yaml (no Herdr spawn)
-├── bootstrap.sh              # dumb copy of templates + all agent prompts
+├── bin/herd-tui              # curses TUI wizard
+├── bin/herd-init             # CLI (interactive + --non-interactive)
+├── composer/                 # shared plan + materialize engine
+├── archetypes/               # TASKS seeds
 ├── agents/                   # generic role prompts
-├── packs/                    # domain packs (software-delivery)
+├── packs/software-delivery/  # default role pack
+├── protocols/                # coordination + herdr-messaging
+├── templates/                # CONVENTIONS + blank TASKS fallback
 ├── schemas/team.v1.schema.json
-├── examples/                 # sample team.yaml
-├── templates/                # CONVENTIONS.md + TASKS.md copied into instances
-├── protocols/coordination.md
-├── docs/lightweight-composer.md
-├── README.md
-└── TASKS.md                  # runtime board for THIS repo only
+└── bootstrap.sh              # dumb full copy (no team.yaml / archetypes)
 ```
 
-There is no `agents/services.md` by default.
+## After scaffold (still manual for now)
 
-## Ways to start a project
+US-04/05 (auto Herdr layout + seed panes) are **not** built yet.
 
-### herd-init (recommended)
+1. `cd` into the project  
+2. `herdr`  
+3. Create tabs from `team.yaml` `layout.tabs`  
+4. `herdr agent start <id> --kind <kind> --pane ...`  
+5. Boot with each persona’s `boot_prompt`  
 
-Interactive rail: name, target dir, pack, persona kind/model/effort, then write files.
+## Agent communication (built in)
 
-```bash
-./bin/herd-init
-./bin/herd-init --name acme
-./bin/herd-init --non-interactive --name acme --yes
-./bin/herd-init --non-interactive --name acme --dir /tmp/acme --yes \
-  --persona qa:claude:-:high
-./bin/herd-init --list-packs
-```
+Every project includes mandatory Herdr-first protocols and agent prompt sections. Board updates alone are **not** coordination — use `herdr agent prompt`.
 
-Creates `$HOME/<name>` (or `--dir`) with `CONVENTIONS.md`, `TASKS.md`, `protocols/`, enabled `agents/*.md`, and `team.yaml`. Refuses to clobber a non-empty target.
+## Roadmap (stories)
 
-`team.yaml` records **intent** for `model` and `effort`. Actual CLI flags differ by agent kind (Grok vs Claude, etc.). Do not assume every kind accepts `--model` / `--effort`.
-
-`herd-init` does **not** open Herdr or start agents. After it finishes:
-
-1. `cd` into the project
-2. `herdr`
-3. Create tabs from `team.yaml` `layout.tabs`
-4. Start each agent manually, e.g. `herdr agent start <id> --kind <kind> --pane ...`
-5. Use `agents/*.md`; boot each agent with its `boot_prompt` from `team.yaml`
-
-### Agent communication (built into the scaffold)
-
-Every new project includes:
-
-- `protocols/coordination.md` — non-negotiable Herdr-first rules
-- `protocols/herdr-messaging.md` — exact `herdr agent prompt` patterns
-- Agent prompts with a **Herdr communication (mandatory)** section
-- `CONVENTIONS.md` + `TASKS.md` reminders that board updates alone are not enough
-- Boot prompts that force reading the messaging protocol before work
-
-Agents must coordinate with `herdr agent prompt` — not by hoping someone watches a pane. You should not need to re-explain this each time if agents follow the scaffold files.
-
-### bootstrap.sh (dumb copy)
-
-```bash
-./bootstrap.sh <project-name>
-```
-
-Copies templates, protocols, and every `agents/*.md` into `$HOME/<project-name>`. No pack, no `team.yaml`, no persona toggles. Same non-empty-target guard.
-
-## Standard tabs
-
-`ops` · `infra` · `dev` · `design` · `qa` · `services`
-
-`herd-init` layout comes from enabled pack personas (no `services` tab unless you add one). `bootstrap.sh` still mentions a `services` pane if you want one.
-
-## Improving the template
-
-Edit this repo (`agents/`, `packs/`, `templates/`, `protocols/`, `bin/herd-init`, `bootstrap.sh`). Existing instances keep their copies until someone copies changes over on purpose.
+| Priority | Stories | Status |
+|----------|---------|--------|
+| P0 | US-01, US-02, US-03 (scaffold + TUI) | **This phase** |
+| P1 | US-04 Herdr layout auto | Planned |
+| P2 | US-05 Seed panes | Planned |
+| P3 | US-06 Templates | Planned |
+| Later | US-07 status, US-08 update existing | Planned |

@@ -1,0 +1,274 @@
+"""CLI rail for herd-init (US-01/02/03 without full TUI chrome)."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+from typing import Any
+
+from .archetypes import iter_archetypes, load_archetype, tasks_markdown_for
+from .materialize import materialize, print_next_steps
+from .packs import (
+    apply_defaults,
+    apply_overrides,
+    apply_persona_fields,
+    iter_packs,
+    load_pack,
+    parse_persona_fields,
+    validate_project_name,
+)
+from .paths import DEFAULT_PACK, OPS_ID
+from .yamlutil import load_yaml
+
+
+def prompt_line(label: str, default: str | None = None) -> str:
+    suffix = f" [{default}]" if default not in (None, "") else ""
+    try:
+        raw = input(f"{label}{suffix}: ").strip()
+    except EOFError:
+        raise SystemExit("error: EOF on prompt; use --non-interactive")
+    if raw == "" and default is not None:
+        return default
+    return raw
+
+
+def pick_from_list(label: str, items: list[tuple[str, str]], default_id: str) -> str:
+    print(f"\n{label}")
+    ids = []
+    for i, (iid, desc) in enumerate(items, 1):
+        mark = "*" if iid == default_id else " "
+        print(f"  {i}. [{mark}] {iid} — {desc}")
+        ids.append(iid)
+    raw = prompt_line("Choice (number or id)", default_id)
+    if raw.isdigit():
+        idx = int(raw)
+        if 1 <= idx <= len(ids):
+            return ids[idx - 1]
+        raise SystemExit(f"invalid choice {raw}")
+    if raw not in ids:
+        raise SystemExit(f"unknown id {raw!r}")
+    return raw
+
+
+def interactive_plan(
+    *,
+    name: str | None,
+    target: Path | None,
+    pack_id: str,
+    archetype_id: str | None,
+    persona_specs: list[str],
+    git_init: bool | None,
+    assume_yes: bool,
+) -> dict[str, Any]:
+    """Return a plan dict ready for materialize."""
+    name = prompt_line("Project name", name) if not (name and assume_yes) else name
+    if not name:
+        name = prompt_line("Project name")
+    name = validate_project_name(name)
+
+    default_target = str(target) if target else str(Path.home() / name)
+    target_s = prompt_line("Target directory", default_target)
+    target_path = Path(target_s).expanduser().resolve()
+
+    available = {p["id"]: p for p in iter_packs()}
+    if not available:
+        raise SystemExit("no packs found")
+    pack_id = prompt_line("Pack", pack_id or DEFAULT_PACK)
+    if pack_id not in available:
+        raise SystemExit(f"unknown pack {pack_id!r}")
+    pack = available[pack_id]
+
+    arch_items = [(a["id"], a.get("description") or a.get("title") or "") for a in iter_archetypes()]
+    if not arch_items:
+        arch_items = [("blank", "Blank")]
+    archetype_id = archetype_id or "greenfield-web"
+    if archetype_id not in {a[0] for a in arch_items}:
+        archetype_id = arch_items[0][0]
+    archetype_id = pick_from_list("Archetype / starting phase", arch_items, archetype_id)
+    archetype = load_archetype(archetype_id)
+
+    personas = apply_defaults(pack)
+    apply_overrides(personas, persona_specs)
+
+    print("\nRoles (Enter=keep, kind:model:effort, n/off=disable, y/on=enable; ops always on)")
+    for persona in personas:
+        desc = persona.get("description") or ""
+        model_s = persona["model"] if persona["model"] is not None else "-"
+        effort_s = persona["effort"] if persona["effort"] is not None else "-"
+        print(f"  {persona['id']} — {persona['title']}")
+        if desc:
+            print(f"      {desc}")
+        print(f"      kind={persona['agent_kind']}  model={model_s}  effort={effort_s}")
+        reply = prompt_line("      value", "")
+        if reply == "":
+            continue
+        low = reply.lower()
+        if low in ("n", "off", "disable", "disabled"):
+            if persona["id"] == OPS_ID:
+                print("      ops cannot be disabled; keeping enabled")
+            else:
+                persona["enabled"] = False
+            continue
+        if low in ("y", "on", "enable", "enabled"):
+            persona["enabled"] = True
+            continue
+        kind, model_slot, effort_slot = parse_persona_fields(reply)
+        apply_persona_fields(persona, kind, model_slot, effort_slot)
+
+    if git_init is None:
+        git_reply = prompt_line("Initialize git repo?", "y")
+        git_init = git_reply.lower() in ("y", "yes")
+    git_commit = False
+    if git_init:
+        gc = prompt_line("Create initial commit?", "n")
+        git_commit = gc.lower() in ("y", "yes")
+
+    print("\nPlan")
+    print(f"  name:       {name}")
+    print(f"  dir:        {target_path}")
+    print(f"  pack:       {pack_id}")
+    print(f"  archetype:  {archetype_id}")
+    print(f"  git_init:   {git_init}  commit={git_commit}")
+    for persona in personas:
+        flag = "on " if persona["enabled"] else "off"
+        print(
+            f"  [{flag}] {persona['id']}: {persona['agent_kind']} / "
+            f"{persona['model'] or '-'} / {persona['effort'] or '-'}"
+        )
+    if not assume_yes:
+        confirm = prompt_line("Create project?", "y")
+        if confirm.lower() not in ("y", "yes"):
+            raise SystemExit("aborted")
+
+    return {
+        "name": name,
+        "target": target_path,
+        "pack": pack,
+        "personas": personas,
+        "archetype_id": archetype_id,
+        "tasks_markdown": tasks_markdown_for(archetype, name),
+        "git_init": git_init,
+        "git_commit": git_commit,
+    }
+
+
+def noninteractive_plan(
+    *,
+    name: str | None,
+    target: Path | None,
+    pack_id: str,
+    archetype_id: str,
+    persona_specs: list[str],
+    git_init: bool,
+    git_commit: bool,
+) -> dict[str, Any]:
+    if not name:
+        raise SystemExit("--non-interactive requires --name")
+    name = validate_project_name(name)
+    pack = load_pack(pack_id)
+    personas = apply_defaults(pack)
+    apply_overrides(personas, persona_specs)
+    dest = (target if target else Path.home() / name).expanduser().resolve()
+    archetype = load_archetype(archetype_id)
+    return {
+        "name": name,
+        "target": dest,
+        "pack": pack,
+        "personas": personas,
+        "archetype_id": archetype_id,
+        "tasks_markdown": tasks_markdown_for(archetype, name),
+        "git_init": git_init,
+        "git_commit": git_commit,
+    }
+
+
+def list_packs() -> int:
+    packs = iter_packs()
+    if not packs:
+        print("no packs")
+        return 1
+    width = max(len(p["id"]) for p in packs)
+    for pack in packs:
+        print(f"{pack['id']:<{width}}  {pack.get('title') or ''}  {pack.get('description') or ''}".rstrip())
+    return 0
+
+
+def list_archetypes() -> int:
+    items = iter_archetypes()
+    if not items:
+        print("no archetypes")
+        return 1
+    width = max(len(a["id"]) for a in items)
+    for a in items:
+        print(f"{a['id']:<{width}}  {a.get('title') or ''}  {a.get('description') or ''}".rstrip())
+    return 0
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Initialize a Herdr multi-agent project (files only).")
+    p.add_argument("--name")
+    p.add_argument("--dir", dest="dir")
+    p.add_argument("--pack", default=DEFAULT_PACK)
+    p.add_argument("--archetype", default="greenfield-web", help="Starting TASKS seed (default: greenfield-web)")
+    p.add_argument("--yes", action="store_true")
+    p.add_argument("--persona", action="append", default=[], metavar="id:kind:model:effort")
+    p.add_argument("--non-interactive", action="store_true")
+    p.add_argument("--git", dest="git", action="store_true", default=None, help="git init")
+    p.add_argument("--no-git", dest="git", action="store_false", help="skip git init")
+    p.add_argument("--git-commit", action="store_true", help="with --git, also initial commit")
+    p.add_argument("--list-packs", action="store_true")
+    p.add_argument("--list-archetypes", action="store_true")
+    return p.parse_args(argv)
+
+
+def run_plan(plan: dict[str, Any]) -> int:
+    materialize(
+        name=plan["name"],
+        target=plan["target"],
+        pack=plan["pack"],
+        personas=plan["personas"],
+        tasks_markdown=plan.get("tasks_markdown"),
+        git_init=bool(plan.get("git_init")),
+        git_commit=bool(plan.get("git_commit")),
+        archetype_id=plan.get("archetype_id"),
+    )
+    team = load_yaml((plan["target"] / "team.yaml").read_text(encoding="utf-8"))
+    print_next_steps(plan["target"], team)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv if argv is not None else sys.argv[1:])
+    if args.list_packs:
+        return list_packs()
+    if args.list_archetypes:
+        return list_archetypes()
+
+    target = Path(args.dir).expanduser() if args.dir else None
+    git_flag = args.git  # None / True / False
+
+    if args.non_interactive:
+        git_init = True if git_flag is True else False if git_flag is False else False
+        plan = noninteractive_plan(
+            name=args.name,
+            target=target,
+            pack_id=args.pack,
+            archetype_id=args.archetype,
+            persona_specs=args.persona,
+            git_init=git_init,
+            git_commit=bool(args.git_commit and git_init),
+        )
+    else:
+        if not sys.stdin.isatty() and not args.yes:
+            raise SystemExit("error: not a tty; use --non-interactive")
+        plan = interactive_plan(
+            name=args.name,
+            target=target,
+            pack_id=args.pack,
+            archetype_id=args.archetype,
+            persona_specs=args.persona,
+            git_init=git_flag,
+            assume_yes=args.yes,
+        )
+    return run_plan(plan)

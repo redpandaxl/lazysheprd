@@ -1,0 +1,4 @@
+id: blank
+title: Blank
+description: Empty task board — full manual control
+tasks_file: tasks/blank.md

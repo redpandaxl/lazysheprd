@@ -1,0 +1,4 @@
+id: infra-heavy
+title: Infra-heavy
+description: Platform, environments, CI, and reliability first
+tasks_file: tasks/infra-heavy.md
