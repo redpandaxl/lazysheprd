@@ -35,7 +35,7 @@
     },
     "herdr": {
       "type": "object",
-      "description": "Optional Herdr layout metadata written when US-04 setup succeeds.",
+      "description": "Optional Herdr layout/seed metadata (US-04 / US-05).",
       "additionalProperties": false,
       "required": ["workspace_id", "workspace_label", "tabs"],
       "properties": {
@@ -51,6 +51,29 @@
               "label": { "type": "string", "minLength": 1 },
               "tab_id": { "type": "string" },
               "pane_id": { "type": "string" }
+            }
+          }
+        },
+        "seed": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "seeded_count": { "type": ["integer", "null"] },
+            "failed_count": { "type": ["integer", "null"] },
+            "panes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "status"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "agent_name": { "type": "string" },
+                  "status": { "type": "string" },
+                  "pane_id": { "type": "string" },
+                  "detail": { "type": "string" }
+                }
+              }
             }
           }
         }

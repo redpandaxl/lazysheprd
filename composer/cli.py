@@ -14,6 +14,12 @@ from .herdr_layout import (
     setup_herdr_layout,
 )
 from .materialize import materialize, print_next_steps
+from .seed_panes import (
+    SeedError,
+    merge_seed_into_team,
+    print_seed_report,
+    seed_panes,
+)
 from .packs import (
     apply_defaults,
     apply_overrides,
@@ -135,6 +141,14 @@ def interactive_plan(
         hl = prompt_line("Also set up Herdr layout (workspace + tabs)?", "y")
         herdr_layout = hl.lower() in ("y", "yes")
 
+    seed_panes_flag = False
+    if herdr_layout:
+        if assume_yes:
+            seed_panes_flag = True
+        else:
+            sp = prompt_line("Seed agent panes (start agents + inject role prompts)?", "y")
+            seed_panes_flag = sp.lower() in ("y", "yes")
+
     print("\nPlan")
     print(f"  name:       {name}")
     print(f"  dir:        {target_path}")
@@ -142,6 +156,7 @@ def interactive_plan(
     print(f"  archetype:  {archetype_id}")
     print(f"  git_init:   {git_init}  commit={git_commit}")
     print(f"  herdr_layout: {herdr_layout}")
+    print(f"  seed_panes:   {seed_panes_flag}")
     for persona in personas:
         flag = "on " if persona["enabled"] else "off"
         print(
@@ -163,6 +178,7 @@ def interactive_plan(
         "git_init": git_init,
         "git_commit": git_commit,
         "herdr_layout": herdr_layout,
+        "seed_panes": seed_panes_flag,
     }
 
 
@@ -176,6 +192,7 @@ def noninteractive_plan(
     git_init: bool,
     git_commit: bool,
     herdr_layout: bool = False,
+    seed_panes_flag: bool = False,
 ) -> dict[str, Any]:
     if not name:
         raise SystemExit("--non-interactive requires --name")
@@ -185,6 +202,8 @@ def noninteractive_plan(
     apply_overrides(personas, persona_specs)
     dest = (target if target else Path.home() / name).expanduser().resolve()
     archetype = load_archetype(archetype_id)
+    if seed_panes_flag and not herdr_layout:
+        raise SystemExit("--seed-panes requires --herdr-layout")
     return {
         "name": name,
         "target": dest,
@@ -195,6 +214,7 @@ def noninteractive_plan(
         "git_init": git_init,
         "git_commit": git_commit,
         "herdr_layout": herdr_layout,
+        "seed_panes": seed_panes_flag,
     }
 
 
@@ -247,6 +267,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_false",
         help="Skip Herdr layout",
     )
+    p.add_argument(
+        "--seed-panes",
+        dest="seed_panes",
+        action="store_true",
+        default=None,
+        help="Start agents and inject role prompts (requires layout; US-05)",
+    )
+    p.add_argument(
+        "--no-seed-panes",
+        dest="seed_panes",
+        action="store_false",
+        help="Skip seeding panes",
+    )
     p.add_argument("--list-packs", action="store_true")
     p.add_argument("--list-archetypes", action="store_true")
     return p.parse_args(argv)
@@ -266,6 +299,8 @@ def run_plan(plan: dict[str, Any]) -> int:
     team = load_yaml((plan["target"] / "team.yaml").read_text(encoding="utf-8"))
     layout_meta = None
     layout_err = None
+    seed_report = None
+    seed_err = None
     if plan.get("herdr_layout"):
         try:
             layout_meta = setup_herdr_layout(
@@ -284,11 +319,35 @@ def run_plan(plan: dict[str, Any]) -> int:
         except HerdrLayoutError as exc:
             layout_err = str(exc)
             print(f"⚠️  Herdr layout failed (project files are fine): {exc}", file=sys.stderr)
+
+    if plan.get("seed_panes"):
+        if not layout_meta:
+            seed_err = "seed panes skipped (Herdr layout missing or failed)"
+            print(f"⚠️  {seed_err}", file=sys.stderr)
+        else:
+            try:
+                print("⏳ Seeding agent panes (start + inject role prompts)...")
+                seed_report = seed_panes(
+                    project_name=plan["name"],
+                    project_cwd=plan["target"],
+                    team=team,
+                    layout=layout_meta,
+                    wait_ready=False,
+                )
+                team = merge_seed_into_team(team, seed_report)
+                (plan["target"] / "team.yaml").write_text(dump_yaml(team), encoding="utf-8")
+                print_seed_report(seed_report)
+            except (SeedError, HerdrLayoutError) as exc:
+                seed_err = str(exc)
+                print(f"⚠️  Pane seed failed (layout/files kept): {exc}", file=sys.stderr)
+
     print_next_steps(
         plan["target"],
         team,
         herdr_layout=layout_meta,
         herdr_layout_error=layout_err,
+        seed_report=seed_report,
+        seed_error=seed_err,
     )
     return 0
 
@@ -303,10 +362,12 @@ def main(argv: list[str] | None = None) -> int:
     target = Path(args.dir).expanduser() if args.dir else None
     git_flag = args.git  # None / True / False
     herdr_flag = args.herdr_layout  # None / True / False
+    seed_flag = args.seed_panes  # None / True / False
 
     if args.non_interactive:
         git_init = True if git_flag is True else False if git_flag is False else False
         herdr_layout = True if herdr_flag is True else False
+        seed_panes_flag = True if seed_flag is True else False
         plan = noninteractive_plan(
             name=args.name,
             target=target,
@@ -316,6 +377,7 @@ def main(argv: list[str] | None = None) -> int:
             git_init=git_init,
             git_commit=bool(args.git_commit and git_init),
             herdr_layout=herdr_layout,
+            seed_panes_flag=seed_panes_flag,
         )
     else:
         if not sys.stdin.isatty() and not args.yes:
@@ -332,4 +394,8 @@ def main(argv: list[str] | None = None) -> int:
         # CLI flag overrides interactive default when explicitly set
         if herdr_flag is not None:
             plan["herdr_layout"] = herdr_flag
+        if seed_flag is not None:
+            plan["seed_panes"] = seed_flag
+        if plan.get("seed_panes") and not plan.get("herdr_layout"):
+            plan["seed_panes"] = False
     return run_plan(plan)

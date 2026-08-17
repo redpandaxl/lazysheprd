@@ -26,6 +26,7 @@ class WizardState:
         self.git_init = True
         self.git_commit = False
         self.herdr_layout = True  # US-04 default on
+        self.seed_panes = True  # US-05 default on when layout on
         self.role_index = 0
         self.kind_index = 0
         self.effort_index = 1
@@ -121,7 +122,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
     if state.archetype_id not in arch_ids:
         state.archetype_id = arch_ids[0]
 
-    # 0 name, 1 dir, 2 archetype, 3 roles, 4 models, 5 git, 6 herdr layout, 7 confirm
+    # 0 name, 1 dir, 2 archetype, 3 roles, 4 models, 5 git, 6 herdr+seed, 7 confirm
     step = 0
     arch_sel = arch_ids.index(state.archetype_id)
     git_sel = 0
@@ -343,15 +344,20 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
             continue
 
         if step == 6:
+            if not state.herdr_layout:
+                state.seed_panes = False
             opts = [
                 f"Also set up Herdr layout: {'yes' if state.herdr_layout else 'no'}",
+                f"Seed agent panes (start + inject prompts): "
+                f"{'yes' if state.seed_panes else 'no'}"
+                + ("" if state.herdr_layout else " (needs layout)"),
                 "Next: confirm →",
             ]
             _menu(
                 stdscr,
-                "Herdr layout (US-04)",
-                "Creates a workspace named after the project + tabs (ops/infra/dev/…/services).\n"
-                "Works if Herdr is already running; starts the server if needed.",
+                "Herdr layout + seed (US-04 / US-05)",
+                "Layout: workspace + tabs. Seed: start each agent and inject agents/*.md + boot_prompt.\n"
+                "Space toggles  ·  Seed requires layout.",
                 opts,
                 herdr_sel,
             )
@@ -368,11 +374,19 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
             elif ch in (ord(" "),):
                 if herdr_sel == 0:
                     state.herdr_layout = not state.herdr_layout
+                    if not state.herdr_layout:
+                        state.seed_panes = False
+                elif herdr_sel == 1 and state.herdr_layout:
+                    state.seed_panes = not state.seed_panes
             elif ch in (curses.KEY_ENTER, 10, 13):
-                if herdr_sel == 1:
+                if herdr_sel == 2:
                     step = 7
-                else:
+                elif herdr_sel == 0:
                     state.herdr_layout = not state.herdr_layout
+                    if not state.herdr_layout:
+                        state.seed_panes = False
+                elif herdr_sel == 1 and state.herdr_layout:
+                    state.seed_panes = not state.seed_panes
             continue
 
         if step == 7:
@@ -382,6 +396,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                 f"archetype: {state.archetype_id}",
                 f"git: init={state.git_init} commit={state.git_commit}",
                 f"herdr_layout: {state.herdr_layout}",
+                f"seed_panes:   {state.seed_panes}",
                 "roles:",
             ]
             for p in state.personas:
@@ -417,6 +432,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                             "git_init": state.git_init,
                             "git_commit": state.git_commit,
                             "herdr_layout": state.herdr_layout,
+                            "seed_panes": state.seed_panes and state.herdr_layout,
                         }
                     if sel == 1:
                         step = 6

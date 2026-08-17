@@ -30,7 +30,7 @@ Statuses: `todo` | `in-progress` | `blocked` | `review` | `done`
 | ID | Story | Task | Owner | Status | Notes |
 |----|-------|------|-------|--------|-------|
 | T30 | US-04 | Optional Herdr workspace + tabs (`composer/herdr_layout.py`) | ops | done | Schema includes optional herdr block; live smoke + QA functional pass |
-| T31 | US-05 | Optional seed prompts / agent start per pane | — | todo | Use team.yaml herdr.tabs pane ids |
+| T31 | US-05 | Optional seed prompts / agent start per pane | ops | done | `composer/seed_panes.py`; `--seed-panes`; project-scoped names; 5/5 smoke |
 
 ## Phase 5 — Power user
 

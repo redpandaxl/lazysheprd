@@ -153,6 +153,8 @@ def print_next_steps(
     *,
     herdr_layout: dict[str, Any] | None = None,
     herdr_layout_error: str | None = None,
+    seed_report: dict[str, Any] | None = None,
+    seed_error: str | None = None,
 ) -> None:
     print(f"✅ Project scaffolded at {target}")
     print()
@@ -188,35 +190,46 @@ def print_next_steps(
         print(f"{n}. Create tabs from team.yaml layout: {tabs}")
         n += 1
 
-    print(f"{n}. Start each enabled agent (manual until US-05 seed):")
-    n += 1
-    herdr_tabs = {
-        t.get("label"): t for t in (herdr_layout or {}).get("tabs") or [] if t.get("label")
-    }
-    for p in team["personas"]:
-        if not p["enabled"]:
-            continue
-        extra = ""
-        if p.get("model"):
-            extra += f" --model {p['model']}"
-        if p.get("effort"):
-            extra += f" --effort {p['effort']}"
-        pane_hint = f"<tab:{p['tab']}>"
-        rec = herdr_tabs.get(p["tab"]) or herdr_tabs.get(p["id"])
-        if rec and rec.get("pane_id"):
-            pane_hint = rec["pane_id"]
-        print(
-            f"   herdr agent start {p['id']} --kind {p['agent_kind']} "
-            f"--pane {pane_hint}{extra}"
-        )
-        print("   (model/effort are stored intent; flags vary by agent kind)")
-    print(f"{n}. Paste/use agents/*.md for each persona (US-05 will auto-seed).")
-    n += 1
+    if seed_report and seed_report.get("seeded_count", 0) > 0:
+        print(f"{n}. Agents seeded — use Herdr sidebar to jump between panes.")
+        n += 1
+        print(f"{n}. Tell Ops (or focus ops pane) to begin from TASKS.md.")
+        n += 1
+    else:
+        if seed_error:
+            print(f"{n}. Seed note: {seed_error}")
+            n += 1
+        print(f"{n}. Start each enabled agent (manual):")
+        n += 1
+        herdr_tabs = {
+            t.get("label"): t
+            for t in (herdr_layout or {}).get("tabs") or []
+            if t.get("label")
+        }
+        for p in team["personas"]:
+            if not p["enabled"]:
+                continue
+            extra = ""
+            if p.get("model"):
+                extra += f" --model {p['model']}"
+            if p.get("effort"):
+                extra += f" --effort {p['effort']}"
+            pane_hint = f"<tab:{p['tab']}>"
+            rec = herdr_tabs.get(p["tab"]) or herdr_tabs.get(p["id"])
+            if rec and rec.get("pane_id"):
+                pane_hint = rec["pane_id"]
+            print(
+                f"   herdr agent start {p['id']} --kind {p['agent_kind']} "
+                f"--pane {pane_hint}{extra}"
+            )
+            print("   (model/effort are stored intent; flags vary by agent kind)")
+        print(f"{n}. Paste/use agents/*.md; boot with team.yaml boot_prompt.")
+        n += 1
     print(f"{n}. Communication is MANDATORY via Herdr (not pane-watching):")
     print("   - Read protocols/herdr-messaging.md + protocols/coordination.md")
     print("   - Assign/unblock/review with: herdr agent prompt <name> \"...\"")
     print("   - TASKS.md updates alone are not enough — always message agents")
     n += 1
-    print(f"{n}. Boot each agent with its team.yaml boot_prompt; boot ops with:")
     ops = next(p for p in team["personas"] if p["id"] == OPS_ID)
+    print(f"{n}. Ops boot line (if not already seeded):")
     print(f"   {ops['boot_prompt']}")

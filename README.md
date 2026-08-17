@@ -16,6 +16,7 @@ Product backlog: [docs/product-stories.md](docs/product-stories.md).
 ./bin/herd-init
 ./bin/herd-init --non-interactive --name acme --archetype greenfield-web --git --yes
 ./bin/herd-init --non-interactive --name acme --herdr-layout --yes   # US-04: workspace + tabs
+./bin/herd-init --non-interactive --name acme --herdr-layout --seed-panes --yes  # + US-05
 ./bin/herd-init --list-archetypes
 ./bin/herd-init --list-packs
 ```
@@ -85,14 +86,27 @@ Optional **Also set up Herdr layout** (TUI toggle / CLI `--herdr-layout`):
 ./bin/herd-init --non-interactive --name acme --no-herdr-layout --yes
 ```
 
-**Not yet:** US-05 auto-start agents / paste prompts into panes.
+### Seed panes (US-05)
+
+With layout enabled, optionally **start agents and inject** `agents/*.md` + `boot_prompt`:
+
+```bash
+./bin/herd-init --non-interactive --name acme --herdr-layout --seed-panes --yes
+```
+
+- Agents are named `{project}-{role}` (e.g. `acme-ops`) to avoid global name clashes  
+- Per-pane status is printed and stored under `team.yaml` → `herdr.seed`  
+- Model/effort stay intent in `team.yaml` (not always passed as CLI flags)  
+- `services` tab has no agent  
+
+TUI: same screen as layout — toggle “Seed agent panes”.
 
 ## After scaffold
 
 1. `cd` into the project  
-2. If you skipped layout: `herdr` and create tabs manually  
-3. `herdr agent start <id> --kind <kind> --pane <pane_id from team.yaml>`  
-4. Boot with each persona’s `boot_prompt`  
+2. If layout+seed: open Herdr, use sidebar, Ops is ready from `TASKS.md`  
+3. If layout only: `herdr agent start … --pane <id from team.yaml>` then paste prompts  
+4. If neither: create tabs manually as before  
 
 ## Agent communication (built in)
 
@@ -104,6 +118,6 @@ Every project includes mandatory Herdr-first protocols and agent prompt sections
 |----------|---------|--------|
 | P0 | US-01, US-02, US-03 (scaffold + TUI) | Done |
 | P1 | US-04 Herdr layout auto | **Done** (Python) |
-| P2 | US-05 Seed panes | Next |
+| P2 | US-05 Seed panes | **Done** (Python) |
 | P3 | US-06 Templates | Planned |
 | Later | US-07 status, US-08 update existing | Planned |
