@@ -1,0 +1,687 @@
+#!/usr/bin/env python3
+"""Compose a Herdr project instance from a pack. No Herdr spawn."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import sys
+from pathlib import Path
+from typing import Any
+
+
+TEMPLATE_ROOT = Path(__file__).resolve().parent.parent
+PACKS_DIR = TEMPLATE_ROOT / "packs"
+DEFAULT_PACK = "software-delivery"
+OPS_ID = "ops"
+
+
+# --- minimal YAML (maps, lists, scalars) ---------------------------------
+
+
+def _strip_inline_comment(line: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    out: list[str] = []
+    for ch in line:
+        if escaped:
+            out.append(ch)
+            escaped = False
+            continue
+        if ch == "\\" and in_double:
+            out.append(ch)
+            escaped = True
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double:
+            break
+        out.append(ch)
+    return "".join(out).rstrip()
+
+
+def _parse_scalar(raw: str) -> Any:
+    if raw == "" or raw in ("null", "~"):
+        return None
+    if raw in ("true", "True", "yes"):
+        return True
+    if raw in ("false", "False", "no"):
+        return False
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+        quote = raw[0]
+        inner = raw[1:-1]
+        if quote == '"':
+            return (
+                inner.replace("\\\"", '"')
+                .replace("\\n", "\n")
+                .replace("\\\\", "\\")
+            )
+        return inner.replace("''", "'")
+    try:
+        if raw.startswith(("+", "-")) or raw.isdigit():
+            return int(raw, 10)
+    except ValueError:
+        pass
+    return raw
+
+
+def _needs_quotes(s: str) -> bool:
+    if s == "" or s in ("true", "false", "null", "yes", "no", "~"):
+        return True
+    if s[0].isspace() or s[-1].isspace():
+        return True
+    special = set(":{}[]#&*!|>%@`,")
+    return any(ch in special or ch in "\n\r\t" or ch == "'" or ch == '"' for ch in s)
+
+
+def dump_yaml(data: Any) -> str:
+    lines: list[str] = []
+
+    def emit_scalar(value: Any) -> str:
+        if value is None:
+            return "null"
+        if value is True:
+            return "true"
+        if value is False:
+            return "false"
+        if isinstance(value, int) and not isinstance(value, bool):
+            return str(value)
+        text = str(value)
+        if not _needs_quotes(text):
+            return text
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+
+    def emit(value: Any, indent: int, prefix: str = "") -> None:
+        pad = "  " * indent
+        if isinstance(value, dict):
+            if not value:
+                lines.append(f"{pad}{prefix}{{}}")
+                return
+            first = True
+            for key, item in value.items():
+                head = f"{pad}{prefix}{key}:" if first else f"{pad}{key}:"
+                first = False
+                if isinstance(item, (dict, list)):
+                    if not item:
+                        empty = "{}" if isinstance(item, dict) else "[]"
+                        lines.append(f"{head} {empty}")
+                    else:
+                        lines.append(head)
+                        emit(item, indent + 1)
+                else:
+                    lines.append(f"{head} {emit_scalar(item)}")
+            return
+        if isinstance(value, list):
+            if not value:
+                lines.append(f"{pad}{prefix}[]")
+                return
+            for item in value:
+                dash = f"{pad}- "
+                if isinstance(item, dict):
+                    if not item:
+                        lines.append(f"{pad}- {{}}")
+                        continue
+                    keys = list(item.items())
+                    first_k, first_v = keys[0]
+                    if isinstance(first_v, (dict, list)):
+                        lines.append(f"{dash}{first_k}:")
+                        emit(first_v, indent + 2)
+                    else:
+                        lines.append(f"{dash}{first_k}: {emit_scalar(first_v)}")
+                    for rest_k, rest_v in keys[1:]:
+                        key_pad = "  " * (indent + 1)
+                        if isinstance(rest_v, (dict, list)):
+                            if not rest_v:
+                                empty = "{}" if isinstance(rest_v, dict) else "[]"
+                                lines.append(f"{key_pad}{rest_k}: {empty}")
+                            else:
+                                lines.append(f"{key_pad}{rest_k}:")
+                                emit(rest_v, indent + 2)
+                        else:
+                            lines.append(f"{key_pad}{rest_k}: {emit_scalar(rest_v)}")
+                elif isinstance(item, list):
+                    lines.append(f"{pad}-")
+                    emit(item, indent + 1)
+                else:
+                    lines.append(f"{dash}{emit_scalar(item)}")
+            return
+        lines.append(f"{pad}{prefix}{emit_scalar(value)}")
+
+    emit(data, 0)
+    return "\n".join(lines) + "\n"
+
+
+def load_yaml(text: str) -> Any:
+    entries: list[tuple[int, str]] = []
+    for raw in text.splitlines():
+        if not raw.strip():
+            continue
+        if raw.startswith("\t"):
+            raise ValueError("YAML tabs are not supported")
+        stripped = _strip_inline_comment(raw)
+        if not stripped.strip():
+            continue
+        indent = len(raw) - len(raw.lstrip(" "))
+        entries.append((indent, stripped.strip()))
+
+    def parse_from(idx: int, min_indent: int) -> tuple[Any, int]:
+        if idx >= len(entries):
+            return None, idx
+        indent, content = entries[idx]
+        if indent < min_indent:
+            return None, idx
+        if content.startswith("- ") or content == "-":
+            return parse_list(idx, indent)
+        return parse_map(idx, indent)
+
+    def parse_map(idx: int, map_indent: int) -> tuple[dict[str, Any], int]:
+        result: dict[str, Any] = {}
+        while idx < len(entries):
+            indent, content = entries[idx]
+            if indent != map_indent or content.startswith("-"):
+                break
+            if ":" not in content:
+                raise ValueError(f"expected key: value, got {content!r}")
+            key, rest = content.split(":", 1)
+            key = key.strip()
+            rest = rest.strip()
+            idx += 1
+            if rest != "":
+                result[key] = _parse_scalar(rest)
+                continue
+            if idx >= len(entries) or entries[idx][0] <= map_indent:
+                result[key] = None
+                continue
+            child, idx = parse_from(idx, map_indent + 1)
+            result[key] = child
+        return result, idx
+
+    def parse_list(idx: int, list_indent: int) -> tuple[list[Any], int]:
+        result: list[Any] = []
+        while idx < len(entries):
+            indent, content = entries[idx]
+            if indent != list_indent or not (content.startswith("- ") or content == "-"):
+                break
+            item_body = content[1:].strip()
+            idx += 1
+            if item_body == "":
+                if idx < len(entries) and entries[idx][0] > list_indent:
+                    child, idx = parse_from(idx, list_indent + 1)
+                    result.append(child)
+                else:
+                    result.append(None)
+                continue
+            if ":" in item_body:
+                key, rest = item_body.split(":", 1)
+                mapping: dict[str, Any] = {key.strip(): _parse_scalar(rest.strip()) if rest.strip() != "" else None}
+                if rest.strip() == "" and idx < len(entries) and entries[idx][0] > list_indent + 1:
+                    child, idx = parse_from(idx, list_indent + 2)
+                    mapping[key.strip()] = child
+                key_indent = list_indent + 2
+                while idx < len(entries):
+                    nindent, ncontent = entries[idx]
+                    if nindent != key_indent or ncontent.startswith("-"):
+                        break
+                    if ":" not in ncontent:
+                        raise ValueError(f"expected key: value in list item, got {ncontent!r}")
+                    nkey, nrest = ncontent.split(":", 1)
+                    nkey, nrest = nkey.strip(), nrest.strip()
+                    idx += 1
+                    if nrest != "":
+                        mapping[nkey] = _parse_scalar(nrest)
+                    elif idx < len(entries) and entries[idx][0] > key_indent:
+                        child, idx = parse_from(idx, key_indent + 1)
+                        mapping[nkey] = child
+                    else:
+                        mapping[nkey] = None
+                result.append(mapping)
+            else:
+                result.append(_parse_scalar(item_body))
+        return result, idx
+
+    if not entries:
+        return None
+    value, idx = parse_from(0, entries[0][0])
+    if idx != len(entries):
+        raise ValueError("failed to consume YAML document")
+    return value
+
+
+# --- packs / team plan ----------------------------------------------------
+
+
+def iter_packs() -> list[dict[str, Any]]:
+    packs: list[dict[str, Any]] = []
+    if not PACKS_DIR.is_dir():
+        return packs
+    for path in sorted(PACKS_DIR.iterdir()):
+        pack_file = path / "pack.yaml"
+        if path.is_dir() and pack_file.is_file():
+            data = load_yaml(pack_file.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or "id" not in data:
+                raise SystemExit(f"invalid pack: {pack_file}")
+            packs.append(data)
+    return packs
+
+
+def load_pack(pack_id: str) -> dict[str, Any]:
+    pack_file = PACKS_DIR / pack_id / "pack.yaml"
+    if not pack_file.is_file():
+        known = ", ".join(p["id"] for p in iter_packs()) or "(none)"
+        raise SystemExit(f"unknown pack {pack_id!r}; available: {known}")
+    data = load_yaml(pack_file.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise SystemExit(f"invalid pack: {pack_file}")
+    return data
+
+
+def apply_defaults(pack: dict[str, Any]) -> list[dict[str, Any]]:
+    defaults = pack.get("defaults") or {}
+    personas: list[dict[str, Any]] = []
+    for raw in pack.get("personas") or []:
+        if not isinstance(raw, dict):
+            raise SystemExit("pack persona must be a map")
+        persona = {
+            "id": raw["id"],
+            "role": raw.get("role") or raw["id"],
+            "title": raw.get("title") or raw["id"],
+            "enabled": True,
+            "tab": raw.get("tab") or raw["id"],
+            "agent_kind": raw.get("agent_kind") if raw.get("agent_kind") is not None else defaults.get("agent_kind"),
+            "model": raw["model"] if "model" in raw else defaults.get("model"),
+            "effort": raw["effort"] if "effort" in raw else defaults.get("effort"),
+            "prompt_source": raw["prompt_source"],
+            "boot_prompt": raw.get("boot_prompt") or "",
+        }
+        if not persona["agent_kind"]:
+            raise SystemExit(f"persona {persona['id']} missing agent_kind")
+        personas.append(persona)
+    return personas
+
+
+def _field_slot(parts: list[str], idx: int) -> tuple[bool, Any]:
+    if len(parts) <= idx:
+        return False, None
+    raw = parts[idx]
+    if raw in ("", "-"):
+        return True, None
+    return True, raw
+
+
+def parse_persona_fields(reply: str) -> tuple[str | None, tuple[bool, Any], tuple[bool, Any]]:
+    """Parse interactive kind[:model[:effort]] for the current persona.
+
+    Empty or '-' for model/effort means null. Omitted fields keep existing values.
+    Never treats the first token as a persona id.
+    """
+    reply = reply.strip()
+    if not reply:
+        raise SystemExit("invalid persona fields: empty")
+    parts = reply.split(":", 2)
+    kind = parts[0] if parts[0] != "" else None
+    return kind, _field_slot(parts, 1), _field_slot(parts, 2)
+
+
+def parse_persona_override(spec: str) -> tuple[str, str | None, tuple[bool, Any], tuple[bool, Any]]:
+    """Parse --persona id[:kind[:model[:effort]]]."""
+    parts = spec.split(":", 3)
+    if not parts or not parts[0]:
+        raise SystemExit(f"invalid --persona {spec!r}; expected id:kind:model:effort")
+    pid = parts[0]
+    kind = parts[1] if len(parts) > 1 and parts[1] != "" else None
+    return pid, kind, _field_slot(parts, 2), _field_slot(parts, 3)
+
+
+def apply_persona_fields(
+    persona: dict[str, Any],
+    kind: str | None,
+    model_slot: tuple[bool, Any],
+    effort_slot: tuple[bool, Any],
+) -> None:
+    if kind:
+        persona["agent_kind"] = kind
+    model_set, model = model_slot
+    effort_set, effort = effort_slot
+    if model_set:
+        persona["model"] = model
+    if effort_set:
+        persona["effort"] = effort
+
+
+def apply_overrides(personas: list[dict[str, Any]], specs: list[str]) -> None:
+    by_id = {p["id"]: p for p in personas}
+    for spec in specs:
+        pid, kind, model_slot, effort_slot = parse_persona_override(spec)
+        if pid not in by_id:
+            known = ", ".join(by_id)
+            raise SystemExit(f"unknown persona {pid!r} in --persona; known: {known}")
+        apply_persona_fields(by_id[pid], kind, model_slot, effort_slot)
+
+
+def validate_project_name(name: str) -> str:
+    """Bare directory name only. Reject separators, absolute paths, and .. segments."""
+    if name is None or not str(name).strip():
+        raise SystemExit("Error: project name is required")
+    name = str(name).strip()
+    seps = {os.sep, os.altsep, "/", "\\"} - {None}
+    if any(sep in name for sep in seps):
+        raise SystemExit(
+            f"Error: project name {name!r} must be a single path segment "
+            f"(no slashes). Use --dir for a custom location."
+        )
+    if Path(name).is_absolute():
+        raise SystemExit(
+            f"Error: project name {name!r} must not be an absolute path. "
+            f"Use --dir for a custom location."
+        )
+    parts = Path(name).parts
+    if name in (".", "..") or any(part in (".", "..") for part in parts):
+        raise SystemExit(
+            f"Error: project name {name!r} must not be '.' or '..' "
+            f"or contain '..' segments. Use --dir for a custom location."
+        )
+    return name
+
+
+# --- UI -------------------------------------------------------------------
+
+
+def prompt_line(label: str, default: str | None = None) -> str:
+    suffix = f" [{default}]" if default not in (None, "") else ""
+    try:
+        raw = input(f"{label}{suffix}: ").strip()
+    except EOFError:
+        raise SystemExit("error: EOF on prompt; use --non-interactive")
+    if raw == "" and default is not None:
+        return default
+    return raw
+
+
+def interactive_plan(
+    *,
+    name: str | None,
+    target: Path | None,
+    pack_id: str,
+    persona_specs: list[str],
+    assume_yes: bool,
+) -> tuple[str, Path, dict[str, Any], list[dict[str, Any]]]:
+    name = prompt_line("Project name", name) if not (name and assume_yes) else name
+    if not name:
+        name = prompt_line("Project name")
+    if not name:
+        raise SystemExit("Error: project name is required")
+    name = validate_project_name(name)
+
+    default_target = str(target) if target else str(Path.home() / name)
+    target_s = prompt_line("Target directory", default_target)
+    target = Path(target_s).expanduser().resolve()
+
+    available = {p["id"]: p for p in iter_packs()}
+    if not available:
+        raise SystemExit(f"no packs found under {PACKS_DIR}")
+    pack_id = prompt_line("Pack", pack_id or DEFAULT_PACK)
+    if pack_id not in available:
+        raise SystemExit(f"unknown pack {pack_id!r}")
+    pack = available[pack_id]
+    personas = apply_defaults(pack)
+    apply_overrides(personas, persona_specs)
+
+    print("\nPersonas (Enter=keep, kind:model:effort, n/off=disable; ops always on)")
+    for persona in personas:
+        model_s = persona["model"] if persona["model"] is not None else "-"
+        effort_s = persona["effort"] if persona["effort"] is not None else "-"
+        print(
+            f"  {persona['id']} ({persona['title']})  "
+            f"kind={persona['agent_kind']}  model={model_s}  effort={effort_s}"
+        )
+        reply = prompt_line("    value", "")
+        if reply == "":
+            continue
+        low = reply.lower()
+        if low in ("n", "off", "disable", "disabled"):
+            if persona["id"] == OPS_ID:
+                print("    ops cannot be disabled; keeping enabled")
+            else:
+                persona["enabled"] = False
+            continue
+        if low in ("y", "on", "enable", "enabled"):
+            persona["enabled"] = True
+            continue
+        kind, model_slot, effort_slot = parse_persona_fields(reply)
+        apply_persona_fields(persona, kind, model_slot, effort_slot)
+
+    print("\nPlan")
+    print(f"  name:  {name}")
+    print(f"  dir:   {target}")
+    print(f"  pack:  {pack_id}")
+    for persona in personas:
+        flag = "on " if persona["enabled"] else "off"
+        print(
+            f"  [{flag}] {persona['id']}: {persona['agent_kind']} / "
+            f"{persona['model'] or '-'} / {persona['effort'] or '-'}"
+        )
+    if not assume_yes:
+        confirm = prompt_line("Create project?", "y")
+        if confirm.lower() not in ("y", "yes"):
+            raise SystemExit("aborted")
+    return name, target, pack, personas
+
+
+def noninteractive_plan(
+    *,
+    name: str | None,
+    target: Path | None,
+    pack_id: str,
+    persona_specs: list[str],
+) -> tuple[str, Path, dict[str, Any], list[dict[str, Any]]]:
+    if not name:
+        raise SystemExit("--non-interactive requires --name")
+    name = validate_project_name(name)
+    pack = load_pack(pack_id)
+    personas = apply_defaults(pack)
+    apply_overrides(personas, persona_specs)
+    dest = (target if target else Path.home() / name).expanduser().resolve()
+    return name, dest, pack, personas
+
+
+# --- materialize ----------------------------------------------------------
+
+
+def target_nonempty(path: Path) -> bool:
+    return path.exists() and any(path.iterdir())
+
+
+def build_team(
+    *,
+    name: str,
+    target: Path,
+    pack: dict[str, Any],
+    personas: list[dict[str, Any]],
+) -> dict[str, Any]:
+    defaults = pack.get("defaults") or {}
+    enabled = [p for p in personas if p["enabled"]]
+    if not any(p["id"] == OPS_ID and p["enabled"] for p in personas):
+        raise SystemExit("ops must stay enabled")
+    domain = pack.get("domain") or (
+        "software" if pack.get("id") == "software-delivery" else pack.get("id") or "software"
+    )
+    team_personas = []
+    for p in personas:
+        basename = Path(p["prompt_source"]).name
+        team_personas.append(
+            {
+                "id": p["id"],
+                "role": p["role"],
+                "title": p["title"],
+                "enabled": bool(p["enabled"]),
+                "tab": p["tab"],
+                "agent_kind": p["agent_kind"],
+                "model": p["model"],
+                "effort": p["effort"],
+                "prompt_file": f"agents/{basename}",
+                "boot_prompt": p["boot_prompt"],
+            }
+        )
+    return {
+        "version": 1,
+        "project": {
+            "name": name,
+            "domain": domain,
+            "cwd": str(target),
+        },
+        "defaults": {
+            "agent_kind": defaults.get("agent_kind") or "grok",
+            "model": defaults.get("model"),
+            "effort": defaults.get("effort"),
+        },
+        "layout": {
+            "strategy": "tab_per_persona",
+            "tabs": [{"id": p["tab"], "label": p["title"]} for p in enabled],
+        },
+        "personas": team_personas,
+    }
+
+
+def materialize(
+    *,
+    name: str,
+    target: Path,
+    pack: dict[str, Any],
+    personas: list[dict[str, Any]],
+) -> Path:
+    if target_nonempty(target):
+        raise SystemExit(f"Error: {target} exists and is not empty")
+
+    templates = TEMPLATE_ROOT / "templates"
+    protocols = TEMPLATE_ROOT / "protocols"
+    conventions = templates / "CONVENTIONS.md"
+    tasks = templates / "TASKS.md"
+    for required in (conventions, tasks, protocols):
+        if not required.exists():
+            raise SystemExit(f"missing template file: {required}")
+
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copy(conventions, target / "CONVENTIONS.md")
+    shutil.copy(tasks, target / "TASKS.md")
+    shutil.copytree(protocols, target / "protocols")
+    agents_dir = target / "agents"
+    agents_dir.mkdir(parents=True, exist_ok=True)
+
+    for persona in personas:
+        if not persona["enabled"]:
+            continue
+        src = TEMPLATE_ROOT / persona["prompt_source"]
+        if not src.is_file():
+            raise SystemExit(f"missing prompt_source: {src}")
+        shutil.copy(src, agents_dir / src.name)
+
+    team = build_team(name=name, target=target, pack=pack, personas=personas)
+    (target / "team.yaml").write_text(dump_yaml(team), encoding="utf-8")
+    return target
+
+
+def print_next_steps(target: Path, team: dict[str, Any]) -> None:
+    print(f"✅ Project scaffolded at {target}")
+    print()
+    print("Next steps:")
+    print(f"1. cd {target}")
+    print("2. herdr")
+    tabs = ", ".join(t["id"] for t in team["layout"]["tabs"])
+    print(f"3. Create tabs from team.yaml layout: {tabs}")
+    print("4. Start each enabled agent (manual; no auto-spawn):")
+    for p in team["personas"]:
+        if not p["enabled"]:
+            continue
+        extra = ""
+        if p.get("model"):
+            extra += f" --model {p['model']}"
+        if p.get("effort"):
+            extra += f" --effort {p['effort']}"
+        print(
+            f"   herdr agent start {p['id']} --kind {p['agent_kind']} "
+            f"--pane <tab:{p['tab']}>{extra}"
+        )
+        print("   (model/effort are stored intent; flags vary by agent kind)")
+    print("5. Paste/use agents/*.md; boot ops with:")
+    ops = next(p for p in team["personas"] if p["id"] == OPS_ID)
+    print(f"   {ops['boot_prompt']}")
+
+
+def list_packs() -> int:
+    packs = iter_packs()
+    if not packs:
+        print(f"no packs in {PACKS_DIR}")
+        return 1
+    width = max(len(p["id"]) for p in packs)
+    for pack in packs:
+        title = pack.get("title") or ""
+        desc = pack.get("description") or ""
+        print(f"{pack['id']:<{width}}  {title}  {desc}".rstrip())
+    return 0
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Initialize a Herdr project from a pack (files only; no spawn)."
+    )
+    parser.add_argument("--name", help="Project name (required with --non-interactive)")
+    parser.add_argument("--dir", dest="dir", help="Target directory (default: $HOME/<name>)")
+    parser.add_argument("--pack", default=DEFAULT_PACK, help=f"Pack id (default: {DEFAULT_PACK})")
+    parser.add_argument("--yes", action="store_true", help="Skip confirm")
+    parser.add_argument(
+        "--persona",
+        action="append",
+        default=[],
+        metavar="id:kind:model:effort",
+        help="Override a persona (repeatable). Empty or '-' model/effort => null.",
+    )
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="No prompts; requires --name; uses pack defaults plus --persona",
+    )
+    parser.add_argument("--list-packs", action="store_true", help="List available packs and exit")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv if argv is not None else sys.argv[1:])
+    if args.list_packs:
+        return list_packs()
+
+    target = Path(args.dir).expanduser() if args.dir else None
+
+    if args.non_interactive:
+        name, dest, pack, personas = noninteractive_plan(
+            name=args.name,
+            target=target,
+            pack_id=args.pack,
+            persona_specs=args.persona,
+        )
+    else:
+        if not sys.stdin.isatty() and not args.yes:
+            raise SystemExit("error: not a tty; use --non-interactive")
+        name, dest, pack, personas = interactive_plan(
+            name=args.name,
+            target=target,
+            pack_id=args.pack,
+            persona_specs=args.persona,
+            assume_yes=args.yes,
+        )
+
+    materialize(name=name, target=dest, pack=pack, personas=personas)
+    team = load_yaml((dest / "team.yaml").read_text(encoding="utf-8"))
+    print_next_steps(dest, team)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit("interrupted")

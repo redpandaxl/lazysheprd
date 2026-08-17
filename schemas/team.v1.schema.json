@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Herdr team.yaml v1",
+  "description": "Instance team plan written by herd-init. model and effort are stored intent; CLI flags vary by agent kind.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project", "defaults", "layout", "personas"],
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Schema version."
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "domain", "cwd"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pack domain, e.g. software."
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path of the instance."
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent_kind", "model", "effort"],
+      "properties": {
+        "agent_kind": { "type": "string", "minLength": 1 },
+        "model": { "type": ["string", "null"] },
+        "effort": {
+          "type": ["string", "null"],
+          "description": "low|medium|high|max or a free string."
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "tabs"],
+      "properties": {
+        "strategy": { "const": "tab_per_persona" },
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "personas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "role",
+          "title",
+          "enabled",
+          "tab",
+          "agent_kind",
+          "model",
+          "effort",
+          "prompt_file",
+          "boot_prompt"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "enabled": { "type": "boolean" },
+          "tab": { "type": "string", "minLength": 1 },
+          "agent_kind": { "type": "string", "minLength": 1 },
+          "model": { "type": ["string", "null"] },
+          "effort": {
+            "type": ["string", "null"],
+            "description": "low|medium|high|max or a free string."
+          },
+          "prompt_file": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Relative path in the instance, e.g. agents/ops.md."
+          },
+          "boot_prompt": { "type": "string" }
+        }
+      }
+    }
+  }
+}

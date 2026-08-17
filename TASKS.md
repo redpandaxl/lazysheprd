@@ -2,20 +2,32 @@
 
 Statuses: `todo` | `in-progress` | `blocked` | `review` | `done`
 
-## Phase 1 — Scaffold matches recommended structure
+## Phase 1 — Scaffold (complete)
 
 | ID | Task | Owner | Status | Notes |
 |----|------|-------|--------|-------|
-| T1 | Create `agents/{ops,infrastructure,developers,design,qa}.md` (generic, short, stable). Move root `ops.md` content into `agents/ops.md`; remove root `ops.md`. | dev | done | QA PASS (T7). |
-| T2 | Create `templates/CONVENTIONS.md` and `templates/TASKS.md` (generic blanks for new projects). | dev | done | QA PASS (T7). |
-| T3 | Keep/refresh `protocols/coordination.md` to match human spec (already close). | dev | done | QA PASS (T7). |
-| T4 | Rewrite `bootstrap.sh`: script-relative paths via `BASH_SOURCE`, copy templates/protocols/agents, refuse to clobber non-empty target, print next steps. | dev | done | QA PASS (T7). |
-| T5 | Write root `README.md` (what this is, structure, how to bootstrap, how to improve template over time). | dev | done | QA PASS (T7). |
-| T6 | Dry-run bootstrap into a temp dir under `/tmp`, verify tree, clean up. Mark ready for QA. | dev | done | QA PASS (T7). |
+| T1–T8 | Recommended structure + bootstrap + QA + initial commit | dev/claude/ops | done | On `main`. |
 
-## Phase 2 — After QA
+## Phase 2 — Lightweight composer (complete)
 
 | ID | Task | Owner | Status | Notes |
 |----|------|-------|--------|-------|
-| T7 | QA review of scaffold + bootstrap dry-run | claude | done | PASS — report `/tmp/qa-t7-report.md`. |
-| T8 | Ops commit decision | ops | done | Initial commit on `main`. No remote — not pushed. |
+| T10 | Schema + example team.yaml | dev | done | QA PASS |
+| T11 | packs/software-delivery | dev | done | QA PASS |
+| T12 | bin/herd-init CLI rail | dev | done | QA PASS after interactive parse + name safety fixes |
+| T13 | Materialize files + team.yaml | dev | done | QA PASS |
+| T14 | README | dev | done | QA PASS |
+| T15 | Smoke | dev | done | QA PASS |
+| T16 | QA review Phase 2 | claude | done | PASS — `/tmp/qa-t16-rereview.md` |
+| T17 | Ops commit | ops | done | Phase 2 commit on main; no remote push |
+
+## Design note
+
+See `docs/lightweight-composer.md`.
+
+## Follow-ups (not started)
+
+- Non-interactive disable persona
+- Extra packs (gtm, analytics, …)
+- Herdr tab/agent auto-spawn from team.yaml
+- TUI / right-rail co-pilot

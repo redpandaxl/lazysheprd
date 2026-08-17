@@ -1,0 +1,48 @@
+id: software-delivery
+title: Software delivery
+description: Ops + infra + developers + design + qa
+defaults:
+  agent_kind: grok
+  model: null
+  effort: medium
+personas:
+  - id: ops
+    role: ops
+    title: Operations
+    prompt_source: agents/ops.md
+    tab: ops
+    agent_kind: grok
+    effort: low
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: infrastructure
+    role: infrastructure
+    title: Infrastructure
+    prompt_source: agents/infrastructure.md
+    tab: infra
+    agent_kind: grok
+    effort: medium
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: developers
+    role: developers
+    title: Developers
+    prompt_source: agents/developers.md
+    tab: dev
+    agent_kind: grok
+    effort: medium
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: design
+    role: design
+    title: Design
+    prompt_source: agents/design.md
+    tab: design
+    agent_kind: grok
+    effort: medium
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: qa
+    role: qa
+    title: QA
+    prompt_source: agents/qa.md
+    tab: qa
+    agent_kind: claude
+    effort: medium
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."

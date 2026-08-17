@@ -1,0 +1,73 @@
+version: 1
+project:
+  name: acme
+  domain: software
+  cwd: /Users/example/acme
+defaults:
+  agent_kind: grok
+  model: null
+  effort: medium
+layout:
+  strategy: tab_per_persona
+  tabs:
+    - id: ops
+      label: Operations
+    - id: infra
+      label: Infrastructure
+    - id: dev
+      label: Developers
+    - id: design
+      label: Design
+    - id: qa
+      label: QA
+personas:
+  - id: ops
+    role: ops
+    title: Operations
+    enabled: true
+    tab: ops
+    agent_kind: grok
+    model: null
+    effort: low
+    prompt_file: agents/ops.md
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: infrastructure
+    role: infrastructure
+    title: Infrastructure
+    enabled: true
+    tab: infra
+    agent_kind: grok
+    model: null
+    effort: medium
+    prompt_file: agents/infrastructure.md
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: developers
+    role: developers
+    title: Developers
+    enabled: true
+    tab: dev
+    agent_kind: grok
+    model: null
+    effort: medium
+    prompt_file: agents/developers.md
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: design
+    role: design
+    title: Design
+    enabled: true
+    tab: design
+    agent_kind: grok
+    model: null
+    effort: medium
+    prompt_file: agents/design.md
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
+  - id: qa
+    role: qa
+    title: QA
+    enabled: true
+    tab: qa
+    agent_kind: claude
+    model: null
+    effort: medium
+    prompt_file: agents/qa.md
+    boot_prompt: "Read CONVENTIONS.md, TASKS.md and protocols/coordination.md. Begin."
