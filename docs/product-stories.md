@@ -9,7 +9,7 @@ Source backlog: US-01 … US-08 (TUI composer).
 | **US-01** Create project | **Partial** | `herd-init` CLI: name, dir, pack, roles, models, files | No TUI; no optional `git init` |
 | **US-02** Role & model config | **Partial** | Disable non-ops; kind/model/effort; defaults | Weak role descriptions; no free add of roles; no multi-step Back; OpenRouter not explicit |
 | **US-03** Archetype / phase | **Missing** | Blank `templates/TASKS.md` only | Archetype catalog + seeded TASKS |
-| **US-04** Herdr layout | **Missing** | Printed next steps only | `workspace`/`tab` create API |
+| **US-04** Herdr layout | **Done** | `--herdr-layout` / TUI option → workspace + tabs + focus; ids in `team.yaml` | Server auto-start if needed |
 | **US-05** Seed panes | **Missing** | Manual paste | `agent start` + prompt inject |
 | **US-06** Saved templates | **Missing** | Packs only | Local JSON/TOML user templates |
 | **US-07** Status overview | **Missing** | Use `herdr agent list` raw | Companion view |
@@ -19,8 +19,8 @@ Source backlog: US-01 … US-08 (TUI composer).
 
 1. **P0 — Core engine (shared)** — extract materialize/plan from `herd-init`; archetypes (US-03); git init (US-01); richer role catalog (US-02)
 2. **P1 — Interactive surface** — TUI wizard for US-01+02+03 over the engine; CLI remains thin wrapper
-3. **P2 — US-04** Herdr layout auto
-4. **P3 — US-05** Seed panes
+3. **P2 — US-04** Herdr layout auto ✅
+4. **P3 — US-05** Seed panes (next)
 5. **P4 — US-06** User templates
 6. Later: US-07, US-08
 

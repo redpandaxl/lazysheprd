@@ -15,6 +15,7 @@ Product backlog: [docs/product-stories.md](docs/product-stories.md).
 # CLI rail
 ./bin/herd-init
 ./bin/herd-init --non-interactive --name acme --archetype greenfield-web --git --yes
+./bin/herd-init --non-interactive --name acme --herdr-layout --yes   # US-04: workspace + tabs
 ./bin/herd-init --list-archetypes
 ./bin/herd-init --list-packs
 ```
@@ -68,15 +69,30 @@ herdr-agent-team/
 └── bootstrap.sh              # dumb full copy (no team.yaml / archetypes)
 ```
 
-## After scaffold (still manual for now)
+## Herdr layout (US-04)
 
-US-04/05 (auto Herdr layout + seed panes) are **not** built yet.
+Optional **Also set up Herdr layout** (TUI toggle / CLI `--herdr-layout`):
+
+- Ensures Herdr server is running (starts headless `herdr server` if needed)
+- Creates a **workspace** labeled with the project name, cwd = project dir
+- Creates tabs: enabled persona tabs from the pack **+ `services`**
+- Focuses that workspace (and the first/ops tab)
+- Writes `herdr.workspace_id` + tab/pane ids into `team.yaml` for later seeding
+
+```bash
+./bin/herd-init --non-interactive --name acme --herdr-layout --yes
+# skip:
+./bin/herd-init --non-interactive --name acme --no-herdr-layout --yes
+```
+
+**Not yet:** US-05 auto-start agents / paste prompts into panes.
+
+## After scaffold
 
 1. `cd` into the project  
-2. `herdr`  
-3. Create tabs from `team.yaml` `layout.tabs`  
-4. `herdr agent start <id> --kind <kind> --pane ...`  
-5. Boot with each persona’s `boot_prompt`  
+2. If you skipped layout: `herdr` and create tabs manually  
+3. `herdr agent start <id> --kind <kind> --pane <pane_id from team.yaml>`  
+4. Boot with each persona’s `boot_prompt`  
 
 ## Agent communication (built in)
 
@@ -86,8 +102,8 @@ Every project includes mandatory Herdr-first protocols and agent prompt sections
 
 | Priority | Stories | Status |
 |----------|---------|--------|
-| P0 | US-01, US-02, US-03 (scaffold + TUI) | **This phase** |
-| P1 | US-04 Herdr layout auto | Planned |
-| P2 | US-05 Seed panes | Planned |
+| P0 | US-01, US-02, US-03 (scaffold + TUI) | Done |
+| P1 | US-04 Herdr layout auto | **Done** (Python) |
+| P2 | US-05 Seed panes | Next |
 | P3 | US-06 Templates | Planned |
 | Later | US-07 status, US-08 update existing | Planned |

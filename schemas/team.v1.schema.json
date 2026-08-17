@@ -25,6 +25,34 @@
           "type": "string",
           "minLength": 1,
           "description": "Absolute path of the instance."
+        },
+        "archetype": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional archetype id used to seed TASKS.md."
+        }
+      }
+    },
+    "herdr": {
+      "type": "object",
+      "description": "Optional Herdr layout metadata written when US-04 setup succeeds.",
+      "additionalProperties": false,
+      "required": ["workspace_id", "workspace_label", "tabs"],
+      "properties": {
+        "workspace_id": { "type": "string", "minLength": 1 },
+        "workspace_label": { "type": "string", "minLength": 1 },
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "tab_id", "pane_id"],
+            "properties": {
+              "label": { "type": "string", "minLength": 1 },
+              "tab_id": { "type": "string" },
+              "pane_id": { "type": "string" }
+            }
+          }
         }
       }
     },

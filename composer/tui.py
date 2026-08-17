@@ -25,6 +25,7 @@ class WizardState:
         self.personas: list[dict[str, Any]] = []
         self.git_init = True
         self.git_commit = False
+        self.herdr_layout = True  # US-04 default on
         self.role_index = 0
         self.kind_index = 0
         self.effort_index = 1
@@ -120,9 +121,11 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
     if state.archetype_id not in arch_ids:
         state.archetype_id = arch_ids[0]
 
-    step = 0  # 0 name, 1 dir, 2 archetype, 3 roles toggle, 4 model per role, 5 git, 6 confirm
+    # 0 name, 1 dir, 2 archetype, 3 roles, 4 models, 5 git, 6 herdr layout, 7 confirm
+    step = 0
     arch_sel = arch_ids.index(state.archetype_id)
     git_sel = 0
+    herdr_sel = 0
 
     while True:
         if step == 0:
@@ -310,7 +313,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
             opts = [
                 f"git init: {'yes' if state.git_init else 'no'}",
                 f"initial commit: {'yes' if state.git_commit else 'no'} (only if git init)",
-                "Next: confirm →",
+                "Next: Herdr layout →",
             ]
             _menu(stdscr, "Git options (US-01)", "Space toggles  Enter on Next", opts, git_sel)
             ch = stdscr.getch()
@@ -340,11 +343,45 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
             continue
 
         if step == 6:
+            opts = [
+                f"Also set up Herdr layout: {'yes' if state.herdr_layout else 'no'}",
+                "Next: confirm →",
+            ]
+            _menu(
+                stdscr,
+                "Herdr layout (US-04)",
+                "Creates a workspace named after the project + tabs (ops/infra/dev/…/services).\n"
+                "Works if Herdr is already running; starts the server if needed.",
+                opts,
+                herdr_sel,
+            )
+            ch = stdscr.getch()
+            if ch in (ord("q"), 27):
+                return None
+            if ch in (ord("b"),):
+                step = 5
+                continue
+            if ch in (curses.KEY_UP, ord("k")):
+                herdr_sel = (herdr_sel - 1) % len(opts)
+            elif ch in (curses.KEY_DOWN, ord("j")):
+                herdr_sel = (herdr_sel + 1) % len(opts)
+            elif ch in (ord(" "),):
+                if herdr_sel == 0:
+                    state.herdr_layout = not state.herdr_layout
+            elif ch in (curses.KEY_ENTER, 10, 13):
+                if herdr_sel == 1:
+                    step = 7
+                else:
+                    state.herdr_layout = not state.herdr_layout
+            continue
+
+        if step == 7:
             lines = [
                 f"name: {state.name}",
                 f"dir:  {state.target}",
                 f"archetype: {state.archetype_id}",
                 f"git: init={state.git_init} commit={state.git_commit}",
+                f"herdr_layout: {state.herdr_layout}",
                 "roles:",
             ]
             for p in state.personas:
@@ -365,7 +402,7 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                 elif ch in (curses.KEY_DOWN, ord("j")):
                     sel = (sel + 1) % len(opts)
                 elif ch in (ord("b"),):
-                    step = 5
+                    step = 6
                     break
                 elif ch in (curses.KEY_ENTER, 10, 13):
                     if sel == 0:
@@ -379,9 +416,10 @@ def _run(stdscr: curses.window) -> dict[str, Any] | None:
                             "tasks_markdown": tasks_markdown_for(archetype, state.name),
                             "git_init": state.git_init,
                             "git_commit": state.git_commit,
+                            "herdr_layout": state.herdr_layout,
                         }
                     if sel == 1:
-                        step = 5
+                        step = 6
                         break
                     return None
 

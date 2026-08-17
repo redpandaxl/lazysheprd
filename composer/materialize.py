@@ -147,15 +147,52 @@ def _git_init(target: Path, *, commit: bool, name: str) -> None:
     )
 
 
-def print_next_steps(target: Path, team: dict[str, Any]) -> None:
+def print_next_steps(
+    target: Path,
+    team: dict[str, Any],
+    *,
+    herdr_layout: dict[str, Any] | None = None,
+    herdr_layout_error: str | None = None,
+) -> None:
     print(f"✅ Project scaffolded at {target}")
     print()
     print("Next steps:")
-    print(f"1. cd {target}")
-    print("2. herdr")
-    tabs = ", ".join(t["id"] for t in team["layout"]["tabs"])
-    print(f"3. Create tabs from team.yaml layout: {tabs}")
-    print("4. Start each enabled agent (manual; no auto-spawn):")
+    n = 1
+    print(f"{n}. cd {target}")
+    n += 1
+
+    if herdr_layout:
+        print(
+            f"{n}. Herdr layout ready: workspace "
+            f"{herdr_layout.get('workspace_label')} "
+            f"({herdr_layout.get('workspace_id')})"
+        )
+        n += 1
+        tabs = ", ".join(t.get("label", "") for t in herdr_layout.get("tabs") or [])
+        print(f"{n}. Tabs: {tabs}")
+        n += 1
+        print(f"{n}. Focused on that workspace (open/attach Herdr client if needed).")
+        n += 1
+    elif herdr_layout_error:
+        print(f"{n}. Herdr layout skipped/failed: {herdr_layout_error}")
+        n += 1
+        print(f"{n}. herdr  # then create tabs manually")
+        n += 1
+        tabs = ", ".join(t["id"] for t in team["layout"]["tabs"])
+        print(f"{n}. Create tabs: {tabs} (+ services if desired)")
+        n += 1
+    else:
+        print(f"{n}. herdr")
+        n += 1
+        tabs = ", ".join(t["id"] for t in team["layout"]["tabs"])
+        print(f"{n}. Create tabs from team.yaml layout: {tabs}")
+        n += 1
+
+    print(f"{n}. Start each enabled agent (manual until US-05 seed):")
+    n += 1
+    herdr_tabs = {
+        t.get("label"): t for t in (herdr_layout or {}).get("tabs") or [] if t.get("label")
+    }
     for p in team["personas"]:
         if not p["enabled"]:
             continue
@@ -164,16 +201,22 @@ def print_next_steps(target: Path, team: dict[str, Any]) -> None:
             extra += f" --model {p['model']}"
         if p.get("effort"):
             extra += f" --effort {p['effort']}"
+        pane_hint = f"<tab:{p['tab']}>"
+        rec = herdr_tabs.get(p["tab"]) or herdr_tabs.get(p["id"])
+        if rec and rec.get("pane_id"):
+            pane_hint = rec["pane_id"]
         print(
             f"   herdr agent start {p['id']} --kind {p['agent_kind']} "
-            f"--pane <tab:{p['tab']}>{extra}"
+            f"--pane {pane_hint}{extra}"
         )
         print("   (model/effort are stored intent; flags vary by agent kind)")
-    print("5. Paste/use agents/*.md for each persona.")
-    print("6. Communication is MANDATORY via Herdr (not pane-watching):")
+    print(f"{n}. Paste/use agents/*.md for each persona (US-05 will auto-seed).")
+    n += 1
+    print(f"{n}. Communication is MANDATORY via Herdr (not pane-watching):")
     print("   - Read protocols/herdr-messaging.md + protocols/coordination.md")
     print("   - Assign/unblock/review with: herdr agent prompt <name> \"...\"")
     print("   - TASKS.md updates alone are not enough — always message agents")
-    print("7. Boot each agent with its team.yaml boot_prompt; boot ops with:")
+    n += 1
+    print(f"{n}. Boot each agent with its team.yaml boot_prompt; boot ops with:")
     ops = next(p for p in team["personas"] if p["id"] == OPS_ID)
     print(f"   {ops['boot_prompt']}")

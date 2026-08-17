@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any
 
 from .archetypes import iter_archetypes, load_archetype, tasks_markdown_for
+from .herdr_layout import (
+    HerdrLayoutError,
+    merge_herdr_into_team,
+    setup_herdr_layout,
+)
 from .materialize import materialize, print_next_steps
 from .packs import (
     apply_defaults,
@@ -19,7 +24,7 @@ from .packs import (
     validate_project_name,
 )
 from .paths import DEFAULT_PACK, OPS_ID
-from .yamlutil import load_yaml
+from .yamlutil import dump_yaml, load_yaml
 
 
 def prompt_line(label: str, default: str | None = None) -> str:
@@ -124,12 +129,19 @@ def interactive_plan(
         gc = prompt_line("Create initial commit?", "n")
         git_commit = gc.lower() in ("y", "yes")
 
+    if assume_yes:
+        herdr_layout = True
+    else:
+        hl = prompt_line("Also set up Herdr layout (workspace + tabs)?", "y")
+        herdr_layout = hl.lower() in ("y", "yes")
+
     print("\nPlan")
     print(f"  name:       {name}")
     print(f"  dir:        {target_path}")
     print(f"  pack:       {pack_id}")
     print(f"  archetype:  {archetype_id}")
     print(f"  git_init:   {git_init}  commit={git_commit}")
+    print(f"  herdr_layout: {herdr_layout}")
     for persona in personas:
         flag = "on " if persona["enabled"] else "off"
         print(
@@ -150,6 +162,7 @@ def interactive_plan(
         "tasks_markdown": tasks_markdown_for(archetype, name),
         "git_init": git_init,
         "git_commit": git_commit,
+        "herdr_layout": herdr_layout,
     }
 
 
@@ -162,6 +175,7 @@ def noninteractive_plan(
     persona_specs: list[str],
     git_init: bool,
     git_commit: bool,
+    herdr_layout: bool = False,
 ) -> dict[str, Any]:
     if not name:
         raise SystemExit("--non-interactive requires --name")
@@ -180,6 +194,7 @@ def noninteractive_plan(
         "tasks_markdown": tasks_markdown_for(archetype, name),
         "git_init": git_init,
         "git_commit": git_commit,
+        "herdr_layout": herdr_layout,
     }
 
 
@@ -206,7 +221,9 @@ def list_archetypes() -> int:
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Initialize a Herdr multi-agent project (files only).")
+    p = argparse.ArgumentParser(
+        description="Initialize a Herdr multi-agent project (files + optional Herdr layout)."
+    )
     p.add_argument("--name")
     p.add_argument("--dir", dest="dir")
     p.add_argument("--pack", default=DEFAULT_PACK)
@@ -217,6 +234,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--git", dest="git", action="store_true", default=None, help="git init")
     p.add_argument("--no-git", dest="git", action="store_false", help="skip git init")
     p.add_argument("--git-commit", action="store_true", help="with --git, also initial commit")
+    p.add_argument(
+        "--herdr-layout",
+        dest="herdr_layout",
+        action="store_true",
+        default=None,
+        help="Create Herdr workspace + tabs (US-04)",
+    )
+    p.add_argument(
+        "--no-herdr-layout",
+        dest="herdr_layout",
+        action="store_false",
+        help="Skip Herdr layout",
+    )
     p.add_argument("--list-packs", action="store_true")
     p.add_argument("--list-archetypes", action="store_true")
     return p.parse_args(argv)
@@ -234,7 +264,32 @@ def run_plan(plan: dict[str, Any]) -> int:
         archetype_id=plan.get("archetype_id"),
     )
     team = load_yaml((plan["target"] / "team.yaml").read_text(encoding="utf-8"))
-    print_next_steps(plan["target"], team)
+    layout_meta = None
+    layout_err = None
+    if plan.get("herdr_layout"):
+        try:
+            layout_meta = setup_herdr_layout(
+                project_name=plan["name"],
+                project_cwd=plan["target"],
+                team=team,
+                focus=True,
+            )
+            team = merge_herdr_into_team(team, layout_meta)
+            (plan["target"] / "team.yaml").write_text(dump_yaml(team), encoding="utf-8")
+            print(
+                f"✅ Herdr layout: workspace {layout_meta['workspace_id']} "
+                f"({layout_meta['workspace_label']}) tabs="
+                f"{[t['label'] for t in layout_meta['tabs']]}"
+            )
+        except HerdrLayoutError as exc:
+            layout_err = str(exc)
+            print(f"⚠️  Herdr layout failed (project files are fine): {exc}", file=sys.stderr)
+    print_next_steps(
+        plan["target"],
+        team,
+        herdr_layout=layout_meta,
+        herdr_layout_error=layout_err,
+    )
     return 0
 
 
@@ -247,9 +302,11 @@ def main(argv: list[str] | None = None) -> int:
 
     target = Path(args.dir).expanduser() if args.dir else None
     git_flag = args.git  # None / True / False
+    herdr_flag = args.herdr_layout  # None / True / False
 
     if args.non_interactive:
         git_init = True if git_flag is True else False if git_flag is False else False
+        herdr_layout = True if herdr_flag is True else False
         plan = noninteractive_plan(
             name=args.name,
             target=target,
@@ -258,6 +315,7 @@ def main(argv: list[str] | None = None) -> int:
             persona_specs=args.persona,
             git_init=git_init,
             git_commit=bool(args.git_commit and git_init),
+            herdr_layout=herdr_layout,
         )
     else:
         if not sys.stdin.isatty() and not args.yes:
@@ -271,4 +329,7 @@ def main(argv: list[str] | None = None) -> int:
             git_init=git_flag,
             assume_yes=args.yes,
         )
+        # CLI flag overrides interactive default when explicitly set
+        if herdr_flag is not None:
+            plan["herdr_layout"] = herdr_flag
     return run_plan(plan)
